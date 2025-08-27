@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Users, CreditCard, Trophy, Hash, Search, Home } from "lucide-react"
+import { Plus, Users, CreditCard, Trophy, Hash, Search } from "lucide-react"
 import { MonthSelector } from "./month-selector"
 import { MembersTable } from "./members-table"
 import { AddMemberDialog } from "./add-member-dialog"
@@ -112,10 +112,17 @@ export function Dashboard() {
   const handleUpdateMember = async (memberId: number, updates: Partial<NewMember>) => {
     try {
       setError(null)
-      await DatabaseService.updateMember(selectedMonth, memberId, updates)
+      const updatedMember = await DatabaseService.updateMember(selectedMonth, memberId, updates)
+
+      // Update the editingMember state with the new data
+      setEditingMember(updatedMember)
 
       // Reload members to get updated data
       await loadMembers()
+
+      // Close the edit dialog after successful update
+      setIsEditDialogOpen(false)
+      setEditingMember(null)
     } catch (err) {
       console.error('Error updating member:', err)
       setError('Failed to update member. Please try again.')
@@ -196,20 +203,11 @@ export function Dashboard() {
    * Calculate dashboard statistics based on filtered members
    */
   const stats = React.useMemo(() => {
-    // Get unique families (excluding 'Individual')
-    const uniqueFamilies = new Set(
-      members
-        .filter(m => m.family && m.family !== 'Individual')
-        .map(m => m.family)
-    )
-
     return {
       totalMembers: members.length,
       membersWithTokens: members.filter(m => m.token_number).length,
       paidMembers: members.filter(m => m.payment_status === 'paid').length,
       winnersSelected: members.filter(m => m.draw_status === 'winner').length,
-      familyCount: uniqueFamilies.size,
-      individualMembers: members.filter(m => m.family === 'Individual' || !m.family).length,
       // Add filtered count for search results
       filteredCount: filteredMembers.length
     }
@@ -246,7 +244,7 @@ export function Dashboard() {
       )}
 
       {/* Statistics Cards - Mobile-first grid layout */}
-      <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Members Card */}
         <Card className="min-h-[100px] sm:min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
@@ -296,34 +294,6 @@ export function Dashboard() {
             <div className="text-xl font-bold sm:text-2xl">{stats.winnersSelected}</div>
           </CardContent>
         </Card>
-
-        {/* Families Card */}
-        <Card className="min-h-[100px] sm:min-h-[120px]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
-            <CardTitle className="text-xs font-medium sm:text-xl">Families</CardTitle>
-            <Home className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
-          </CardHeader>
-          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-            <div className="text-xl font-bold sm:text-2xl">{stats.familyCount}</div>
-            <p className="text-xs text-muted-foreground">
-              + {stats.individualMembers} individuals
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Family Feature Information */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start space-x-3">
-          <Home className="h-5 w-5 text-blue-600 mt-0.5" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium text-blue-900">Family Management Feature</h3>
-            <p className="text-sm text-blue-700">
-              Group members by family name to share mobile numbers and manage them together.
-              Individual members are marked separately. Use the search to find family members quickly.
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Action Buttons and Search Bar - Mobile optimized with responsive layout */}

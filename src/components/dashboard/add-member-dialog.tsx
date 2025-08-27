@@ -51,6 +51,9 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
     additional_information: ''
   })
 
+  // Custom family input state
+  const [customFamilyName, setCustomFamilyName] = React.useState('')
+
   // Form validation errors
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
@@ -71,6 +74,7 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
         draw_status: 'not_drawn',
         additional_information: ''
       })
+      setCustomFamilyName('')
       setErrors({})
     }
   }, [open])
@@ -84,6 +88,11 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+
+    // Reset custom family name when selecting existing family
+    if (field === 'family' && value !== '__new__') {
+      setCustomFamilyName('')
     }
   }
 
@@ -108,8 +117,14 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
     }
 
     // Validate family name
-    if (!formData.family?.trim()) {
-      newErrors.family = 'Family name is required'
+    if (formData.family === '__new__') {
+      if (!customFamilyName.trim()) {
+        newErrors.family = 'Please enter a new family name'
+      } else if (customFamilyName.trim().length < 2) {
+        newErrors.family = 'Family name must be at least 2 characters'
+      }
+    } else if (!formData.family || formData.family === 'Individual') {
+      // Individual is valid, no error needed
     }
 
     setErrors(newErrors)
@@ -132,7 +147,7 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
       const cleanedData: NewMember = {
         full_name: formData.full_name.trim(),
         mobile_number: formData.mobile_number.trim(),
-        family: formData.family?.trim() || 'Individual',
+        family: formData.family === '__new__' ? customFamilyName.trim() : (formData.family || 'Individual'),
         payment_status: formData.payment_status,
         paid_to: formData.paid_to || null,
         draw_status: formData.draw_status,
@@ -223,9 +238,15 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
               <div className="mt-2">
                 <Input
                   placeholder="Enter new family name"
-                  onChange={(e) => handleInputChange('family', e.target.value)}
-                  className="text-sm"
+                  value={customFamilyName}
+                  onChange={(e) => setCustomFamilyName(e.target.value)}
+                  className={`text-sm ${customFamilyName.trim().length >= 2 ? 'border-green-500' : ''}`}
                 />
+                {customFamilyName.trim().length >= 2 && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Family name is ready
+                  </p>
+                )}
               </div>
             )}
 

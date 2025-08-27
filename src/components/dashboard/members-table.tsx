@@ -120,7 +120,7 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember }: {
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
             {member.family === 'Individual' ? (
-              <Badge variant="outline" className="text-xs">Individual</Badge>
+              <Badge variant="outline" className="text-xs border-blue-500 text-blue-700">Individual</Badge>
             ) : (
               <div className="flex items-center space-x-2">
                 <Badge variant="secondary" className="text-xs">{member.family}</Badge>
@@ -264,10 +264,10 @@ export function MembersTable({ members, onEditMember, onDeleteMember, isLoading 
                     {/* Family */}
                     <TableCell>
                       {member.family === 'Individual' ? (
-                        <Badge variant="outline" className="text-xs">Individual</Badge>
+                        <Badge variant="outline" className="text-xs ">Individual</Badge>
                       ) : (
                         <div className="flex flex-col items-start space-y-1">
-                          <Badge variant="secondary" className="text-xs">{member.family}</Badge>
+                          <Badge variant="secondary" className="text-xs border-blue-500 text-blue-500">{member.family}</Badge>
                           <span className="text-xs text-muted-foreground">
                             Family member
                           </span>

@@ -1,0 +1,398 @@
+'use client'
+
+import * as React from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Plus, Users, CreditCard, Trophy, Hash, Search, Home } from "lucide-react"
+import { MonthSelector } from "./month-selector"
+import { MembersTable } from "./members-table"
+import { AddMemberDialog } from "./add-member-dialog"
+import { EditMemberDialog } from "./edit-member-dialog"
+import { DatabaseService } from "@/lib/database"
+import { Member, NewMember, MonthTable, formatMonthName } from "@/lib/supabase"
+import { Input } from "@/components/ui/input"
+
+/**
+ * Main Dashboard Component
+ * Provides complete interface for managing the scheme register
+ * Includes month selection, member management, and token assignment
+ * Mobile-first responsive design with progressive enhancement
+ */
+export function Dashboard() {
+  // Current selected month state
+  const [selectedMonth, setSelectedMonth] = React.useState<MonthTable>('january_2025')
+
+  // Members data and loading state
+  const [members, setMembers] = React.useState<Member[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+
+  // Family suggestions for the selected month
+  const [familySuggestions, setFamilySuggestions] = React.useState<string[]>([])
+
+  // Search functionality state
+  const [searchQuery, setSearchQuery] = React.useState('')
+
+  // Dialog states
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [editingMember, setEditingMember] = React.useState<Member | null>(null)
+
+  // Token assignment loading state
+  const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
+
+  // Error state for user feedback
+  const [error, setError] = React.useState<string | null>(null)
+
+  /**
+   * Load members for the selected month
+   * Called whenever the month changes
+   */
+  const loadMembers = React.useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const data = await DatabaseService.getMembers(selectedMonth)
+      setMembers(data)
+
+      // Load family suggestions
+      const families = await DatabaseService.getExistingFamilyNames(selectedMonth)
+      setFamilySuggestions(families)
+    } catch (err) {
+      console.error('Error loading members:', err)
+      setError('Failed to load members. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedMonth])
+
+  /**
+   * Load members when component mounts or month changes
+   */
+  React.useEffect(() => {
+    loadMembers()
+  }, [loadMembers])
+
+  /**
+   * Handle month selection change
+   */
+  const handleMonthChange = (month: MonthTable) => {
+    setSelectedMonth(month)
+    // Clear search when month changes
+    setSearchQuery('')
+  }
+
+  /**
+   * Handle adding a new member
+   */
+  const handleAddMember = async (memberData: NewMember) => {
+    try {
+      setError(null)
+      const newMember = await DatabaseService.addMember(selectedMonth, memberData)
+
+      // Add the new member to the current list and re-sort
+      setMembers(prev => [...prev, newMember].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+    } catch (err) {
+      console.error('Error adding member:', err)
+      setError('Failed to add member. Please try again.')
+      throw err // Re-throw to handle in dialog
+    }
+  }
+
+  /**
+   * Handle editing a member
+   */
+  const handleEditMember = (member: Member) => {
+    setEditingMember(member)
+    setIsEditDialogOpen(true)
+  }
+
+  /**
+   * Handle updating a member
+   */
+  const handleUpdateMember = async (memberId: number, updates: Partial<NewMember>) => {
+    try {
+      setError(null)
+      await DatabaseService.updateMember(selectedMonth, memberId, updates)
+
+      // Reload members to get updated data
+      await loadMembers()
+    } catch (err) {
+      console.error('Error updating member:', err)
+      setError('Failed to update member. Please try again.')
+      throw err // Re-throw to handle in dialog
+    }
+  }
+
+  /**
+   * Handle deleting a member
+   */
+  const handleDeleteMember = async (memberId: number) => {
+    if (!confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setError(null)
+      await DatabaseService.deleteMember(selectedMonth, memberId)
+
+      // Remove the member from the current list
+      setMembers(prev => prev.filter(member => member.id !== memberId))
+    } catch (err) {
+      console.error('Error deleting member:', err)
+      setError('Failed to delete member. Please try again.')
+    }
+  }
+
+  /**
+   * Handle token assignment for all members
+   */
+  const handleAssignTokens = async () => {
+    const membersWithoutTokens = members.filter(member => !member.token_number)
+
+    if (membersWithoutTokens.length === 0) {
+      alert('All members already have token numbers assigned.')
+      return
+    }
+
+    const confirmMessage = `This will assign token numbers to ${membersWithoutTokens.length} member(s). Are you sure?`
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    try {
+      setIsAssigningTokens(true)
+      setError(null)
+
+      await DatabaseService.assignTokenNumbers(selectedMonth)
+
+      // Reload members to get updated token numbers
+      await loadMembers()
+    } catch (err) {
+      console.error('Error assigning tokens:', err)
+      setError('Failed to assign tokens. Please try again.')
+    } finally {
+      setIsAssigningTokens(false)
+    }
+  }
+
+  /**
+   * Filter members based on search query
+   * Searches across full name, mobile number, and family name
+   */
+  const filteredMembers = React.useMemo(() => {
+    if (!searchQuery.trim()) {
+      return members
+    }
+
+    const query = searchQuery.toLowerCase().trim()
+    return members.filter(member =>
+      member.full_name.toLowerCase().includes(query) ||
+      member.mobile_number.includes(query) ||
+      member.family.toLowerCase().includes(query)
+    )
+  }, [members, searchQuery])
+
+  /**
+   * Calculate dashboard statistics based on filtered members
+   */
+  const stats = React.useMemo(() => {
+    // Get unique families (excluding 'Individual')
+    const uniqueFamilies = new Set(
+      members
+        .filter(m => m.family && m.family !== 'Individual')
+        .map(m => m.family)
+    )
+
+    return {
+      totalMembers: members.length,
+      membersWithTokens: members.filter(m => m.token_number).length,
+      paidMembers: members.filter(m => m.payment_status === 'paid').length,
+      winnersSelected: members.filter(m => m.draw_status === 'winner').length,
+      familyCount: uniqueFamilies.size,
+      individualMembers: members.filter(m => m.family === 'Individual' || !m.family).length,
+      // Add filtered count for search results
+      filteredCount: filteredMembers.length
+    }
+  }, [members, filteredMembers])
+
+  return (
+    <div className="container mx-auto px-4 py-4 space-y-4 sm:px-6 sm:py-6 lg:py-8">
+      {/* Header Section - Mobile optimized with stacked layout */}
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Scheme Register Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Manage members and tokens for {formatMonthName(selectedMonth)}
+          </p>
+        </div>
+
+        {/* Month selector - Full width on mobile, auto width on larger screens */}
+        <div className="w-full sm:w-auto">
+          <MonthSelector
+            selectedMonth={selectedMonth}
+            onMonthChange={handleMonthChange}
+            className="w-full sm:w-auto"
+          />
+        </div>
+      </div>
+
+      {/* Error Alert - Mobile optimized spacing */}
+      {error && (
+        <div className="bg-destructive/15 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm sm:px-4 sm:py-3 sm:text-base">
+          {error}
+        </div>
+      )}
+
+      {/* Statistics Cards - Mobile-first grid layout */}
+      <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Total Members Card */}
+        <Card className="min-h-[100px] sm:min-h-[120px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-xs font-medium sm:text-xl">Total Members</CardTitle>
+            <Users className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+          </CardHeader>
+          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+            <div className="text-xl font-bold sm:text-2xl">{stats.totalMembers}</div>
+          </CardContent>
+        </Card>
+
+        {/* Tokens Assigned Card */}
+        <Card className="min-h-[100px] sm:min-h-[120px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-xs font-medium sm:text-xl">Tokens Assigned</CardTitle>
+            <Hash className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+          </CardHeader>
+          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+            <div className="text-xl font-bold sm:text-2xl">{stats.membersWithTokens}</div>
+            <p className="text-xs text-muted-foreground">
+              of {stats.totalMembers} members
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Paid Members Card */}
+        <Card className="min-h-[100px] sm:min-h-[120px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-xs font-medium sm:text-xl">Paid Members</CardTitle>
+            <CreditCard className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+          </CardHeader>
+          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+            <div className="text-xl font-bold sm:text-2xl">{stats.paidMembers}</div>
+            <p className="text-xs text-muted-foreground">
+              of {stats.totalMembers} members
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Winners Card */}
+        <Card className="min-h-[100px] sm:min-h-[120px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-xs font-medium sm:text-xl">Winners</CardTitle>
+            <Trophy className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+          </CardHeader>
+          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+            <div className="text-xl font-bold sm:text-2xl">{stats.winnersSelected}</div>
+          </CardContent>
+        </Card>
+
+        {/* Families Card */}
+        <Card className="min-h-[100px] sm:min-h-[120px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-xs font-medium sm:text-xl">Families</CardTitle>
+            <Home className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+          </CardHeader>
+          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+            <div className="text-xl font-bold sm:text-2xl">{stats.familyCount}</div>
+            <p className="text-xs text-muted-foreground">
+              + {stats.individualMembers} individuals
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Family Feature Information */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-3">
+          <Home className="h-5 w-5 text-blue-600 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-blue-900">Family Management Feature</h3>
+            <p className="text-sm text-blue-700">
+              Group members by family name to share mobile numbers and manage them together.
+              Individual members are marked separately. Use the search to find family members quickly.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons and Search Bar - Mobile optimized with responsive layout */}
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+        <Button
+          onClick={() => setIsAddDialogOpen(true)}
+          className="w-full sm:w-auto"
+          size="lg"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Member
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={handleAssignTokens}
+          disabled={isAssigningTokens || members.length === 0}
+          className="w-full sm:w-auto"
+          size="lg"
+        >
+          <Hash className="mr-2 h-4 w-4" />
+          {isAssigningTokens ? 'Assigning Tokens...' : 'Assign Token Numbers'}
+        </Button>
+
+        {/* Search Bar - Positioned alongside action buttons */}
+        <div className="relative w-full sm:w-auto sm:ml-auto">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by name, mobile number, or family..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full sm:w-64"
+          />
+          {/* Search results count indicator */}
+          {searchQuery.trim() && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+              {stats.filteredCount} of {stats.totalMembers}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Members Table - Mobile optimized with filtered data */}
+      <MembersTable
+        members={filteredMembers}
+        onEditMember={handleEditMember}
+        onDeleteMember={handleDeleteMember}
+        isLoading={isLoading}
+      />
+
+      {/* Add Member Dialog */}
+      <AddMemberDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onAddMember={handleAddMember}
+        isLoading={isLoading}
+        familySuggestions={familySuggestions}
+      />
+
+      {/* Edit Member Dialog */}
+      <EditMemberDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onUpdateMember={handleUpdateMember}
+        member={editingMember}
+        isLoading={isLoading}
+        familySuggestions={familySuggestions}
+      />
+    </div>
+  )
+}

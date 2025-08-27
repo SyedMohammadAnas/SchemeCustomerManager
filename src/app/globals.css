@@ -1,26 +1,286 @@
-@import "tailwindcss";
+/* Circular Font Family Declarations */
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-Light Italic.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-BookItalic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-MediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-BoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Circular';
+  src: url('/Circular/CircularStd-BlackItalic.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Apply Circular font family */
+    font-family: 'Circular', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    /* Mobile-specific improvements */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Enable text selection for content areas */
+  p, h1, h2, h3, h4, h5, h6, span, div, input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ring;
+  }
+
+  /* Mobile scrollbar improvements */
+  @media (max-width: 768px) {
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Table enhancements for better professional look */
+  .table-fixed-header {
+    @apply sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60;
+  }
+
+  /* Professional animation for buttons */
+  .btn-animate {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* Enhanced card shadows */
+  .card-enhanced {
+    @apply shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  /* Mobile-specific utility classes */
+  .mobile-touch-friendly {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .mobile-card {
+    @apply rounded-lg border bg-card p-4 shadow-sm;
+  }
+
+  .mobile-button {
+    @apply touch-manipulation select-none;
+  }
+
+  /* Mobile grid layouts */
+  .mobile-grid-2 {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .mobile-grid-1 {
+    @apply grid grid-cols-1 gap-3;
+  }
+
+  /* Mobile spacing utilities */
+  .mobile-space-y {
+    @apply space-y-3;
+  }
+
+  .mobile-space-x {
+    @apply space-x-3;
+  }
+
+  /* Mobile text sizes */
+  .mobile-text-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .mobile-text-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-text-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  .mobile-text-xl {
+    @apply text-lg sm:text-xl;
+  }
+
+  .mobile-text-2xl {
+    @apply text-xl sm:text-2xl;
+  }
+
+  .mobile-text-3xl {
+    @apply text-2xl sm:text-3xl;
+  }
+}
+
+/* Mobile-specific media queries */
+@media (max-width: 640px) {
+  .mobile-container {
+    @apply px-4;
+  }
+
+  .mobile-padding {
+    @apply py-4;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-container {
+    @apply px-4;
+  }
+
+  .mobile-padding {
+    @apply py-4;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-container {
+    @apply px-6;
+  }
+
+  .mobile-padding {
+    @apply py-6;
+  }
 }

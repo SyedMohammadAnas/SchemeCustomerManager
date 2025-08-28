@@ -58,8 +58,13 @@ export interface NewMember {
 /**
  * List of all available months for the scheme
  * Used for table selection and month navigation
+ * Reordered to start from September as the primary month
  */
 export const MONTHS = [
+  'september_2025',
+  'october_2025',
+  'november_2025',
+  'december_2025',
   'january_2025',
   'february_2025',
   'march_2025',
@@ -67,11 +72,7 @@ export const MONTHS = [
   'may_2025',
   'june_2025',
   'july_2025',
-  'august_2025',
-  'september_2025',
-  'october_2025',
-  'november_2025',
-  'december_2025'
+  'august_2025'
 ] as const
 
 export type MonthTable = typeof MONTHS[number]

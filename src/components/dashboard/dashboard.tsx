@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input"
  */
 export function Dashboard() {
   // Current selected month state
-  const [selectedMonth, setSelectedMonth] = React.useState<MonthTable>('january_2025')
+  // Default to September as the primary month after migration
+  const [selectedMonth, setSelectedMonth] = React.useState<MonthTable>('september_2025')
 
   // Members data and loading state
   const [members, setMembers] = React.useState<Member[]>([])
@@ -246,23 +247,23 @@ export function Dashboard() {
       {/* Statistics Cards - Mobile-first grid layout */}
       <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Members Card */}
-        <Card className="min-h-[100px] sm:min-h-[120px]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+        <Card className="min-h-[80px] sm:min-h-[100px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
             <CardTitle className="text-xs font-medium sm:text-xl">Total Members</CardTitle>
             <Users className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </CardHeader>
-          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.totalMembers}</div>
           </CardContent>
         </Card>
 
         {/* Tokens Assigned Card */}
-        <Card className="min-h-[100px] sm:min-h-[120px]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+        <Card className="min-h-[80px] sm:min-h-[100px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
             <CardTitle className="text-xs font-medium sm:text-xl">Tokens Assigned</CardTitle>
             <Hash className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </CardHeader>
-          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.membersWithTokens}</div>
             <p className="text-xs text-muted-foreground">
               of {stats.totalMembers} members
@@ -271,12 +272,12 @@ export function Dashboard() {
         </Card>
 
         {/* Paid Members Card */}
-        <Card className="min-h-[100px] sm:min-h-[120px]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+        <Card className="min-h-[80px] sm:min-h-[100px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
             <CardTitle className="text-xs font-medium sm:text-xl">Paid Members</CardTitle>
             <CreditCard className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </CardHeader>
-          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.paidMembers}</div>
             <p className="text-xs text-muted-foreground">
               of {stats.totalMembers} members
@@ -285,12 +286,12 @@ export function Dashboard() {
         </Card>
 
         {/* Winners Card */}
-        <Card className="min-h-[100px] sm:min-h-[120px]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-3 sm:px-4 sm:py-4">
+        <Card className="min-h-[80px] sm:min-h-[100px]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
             <CardTitle className="text-xs font-medium sm:text-xl">Winners</CardTitle>
             <Trophy className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </CardHeader>
-          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.winnersSelected}</div>
           </CardContent>
         </Card>

@@ -3,11 +3,13 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Users, CreditCard, Trophy, Hash, Search } from "lucide-react"
+import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown } from "lucide-react"
 import { MonthSelector } from "./month-selector"
 import { MembersTable } from "./members-table"
 import { AddMemberDialog } from "./add-member-dialog"
 import { EditMemberDialog } from "./edit-member-dialog"
+import { DeclareWinnerDialog } from "./declare-winner-dialog"
+import { MemberHistoryDialog } from "./member-history-dialog"
 import { DatabaseService } from "@/lib/database"
 import { Member, NewMember, MonthTable, formatMonthName } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
@@ -15,7 +17,7 @@ import { Input } from "@/components/ui/input"
 /**
  * Main Dashboard Component
  * Provides complete interface for managing the scheme register
- * Includes month selection, member management, and token assignment
+ * Includes month selection, member management, token assignment, and winner declaration
  * Mobile-first responsive design with progressive enhancement
  */
 export function Dashboard() {
@@ -27,6 +29,9 @@ export function Dashboard() {
   const [members, setMembers] = React.useState<Member[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
+  // Current month winner state
+  const [currentWinner, setCurrentWinner] = React.useState<Member | null>(null)
+
   // Family suggestions for the selected month
   const [familySuggestions, setFamilySuggestions] = React.useState<string[]>([])
 
@@ -36,24 +41,35 @@ export function Dashboard() {
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [isDeclareWinnerDialogOpen, setIsDeclareWinnerDialogOpen] = React.useState(false)
+  const [isMemberHistoryDialogOpen, setIsMemberHistoryDialogOpen] = React.useState(false)
   const [editingMember, setEditingMember] = React.useState<Member | null>(null)
+  const [historyMember, setHistoryMember] = React.useState<Member | null>(null)
 
-  // Token assignment loading state
+  // Loading states for various operations
   const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
+  const [isProceedingToNextMonth, setIsProceedingToNextMonth] = React.useState(false)
 
   // Error state for user feedback
   const [error, setError] = React.useState<string | null>(null)
 
   /**
-   * Load members for the selected month
+   * Load members and winner for the selected month
    * Called whenever the month changes
    */
   const loadMembers = React.useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
-      const data = await DatabaseService.getMembers(selectedMonth)
+
+      // Load members and winner in parallel
+      const [data, winner] = await Promise.all([
+        DatabaseService.getMembers(selectedMonth),
+        DatabaseService.getCurrentWinner(selectedMonth)
+      ])
+
       setMembers(data)
+      setCurrentWinner(winner)
 
       // Load family suggestions
       const families = await DatabaseService.getExistingFamilyNames(selectedMonth)
@@ -134,21 +150,24 @@ export function Dashboard() {
   /**
    * Handle deleting a member
    */
-  const handleDeleteMember = async (memberId: number) => {
+  const handleDeleteMember = (memberId: number) => {
     if (!confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
       return
     }
 
-    try {
-      setError(null)
-      await DatabaseService.deleteMember(selectedMonth, memberId)
+    // Use async IIFE to handle async operations
+    ;(async () => {
+      try {
+        setError(null)
+        await DatabaseService.deleteMember(selectedMonth, memberId)
 
-      // Remove the member from the current list
-      setMembers(prev => prev.filter(member => member.id !== memberId))
-    } catch (err) {
-      console.error('Error deleting member:', err)
-      setError('Failed to delete member. Please try again.')
-    }
+        // Remove the member from the current list
+        setMembers(prev => prev.filter(member => member.id !== memberId))
+      } catch (err) {
+        console.error('Error deleting member:', err)
+        setError('Failed to delete member. Please try again.')
+      }
+    })()
   }
 
   /**
@@ -184,6 +203,71 @@ export function Dashboard() {
   }
 
   /**
+   * Handle declaring a winner for the current month
+   */
+  const handleDeclareWinner = async (memberId: number) => {
+    try {
+      setError(null)
+      const winner = await DatabaseService.declareWinner(selectedMonth, memberId)
+
+      // Update current winner state
+      setCurrentWinner(winner)
+
+      // Reload members to get updated draw status
+      await loadMembers()
+    } catch (err) {
+      console.error('Error declaring winner:', err)
+      setError('Failed to declare winner. Please try again.')
+      throw err // Re-throw to handle in dialog
+    }
+  }
+
+  /**
+   * Handle proceeding to the next month
+   */
+  const handleProceedToNextMonth = async () => {
+    const nextMonth = DatabaseService.getNextMonth(selectedMonth)
+
+    if (!nextMonth) {
+      alert('This is the last month in the sequence.')
+      return
+    }
+
+    if (!currentWinner) {
+      alert('Please declare a winner for the current month before proceeding.')
+      return
+    }
+
+    const confirmMessage = `This will copy all members to ${formatMonthName(nextMonth)} and reset payment statuses. Are you sure?`
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    try {
+      setIsProceedingToNextMonth(true)
+      setError(null)
+
+      const newMonth = await DatabaseService.proceedToNextMonth(selectedMonth)
+
+      // Switch to the new month
+      setSelectedMonth(newMonth)
+    } catch (err) {
+      console.error('Error proceeding to next month:', err)
+      setError('Failed to proceed to next month. Please try again.')
+    } finally {
+      setIsProceedingToNextMonth(false)
+    }
+  }
+
+  /**
+   * Handle viewing member history
+   */
+  const handleViewMemberHistory = (member: Member) => {
+    setHistoryMember(member)
+    setIsMemberHistoryDialogOpen(true)
+  }
+
+  /**
    * Filter members based on search query
    * Searches across full name, mobile number, and family name
    */
@@ -209,10 +293,16 @@ export function Dashboard() {
       membersWithTokens: members.filter(m => m.token_number).length,
       paidMembers: members.filter(m => m.payment_status === 'paid').length,
       winnersSelected: members.filter(m => m.draw_status === 'winner').length,
+      drawnMembers: members.filter(m => m.draw_status === 'drawn').length,
       // Add filtered count for search results
       filteredCount: filteredMembers.length
     }
   }, [members, filteredMembers])
+
+  /**
+   * Check if current month is starting month for conditional features
+   */
+  const isStartingMonth = DatabaseService.isStartingMonth(selectedMonth)
 
   return (
     <div className="container mx-auto px-4 py-4 space-y-4 sm:px-6 sm:py-6 lg:py-8">
@@ -224,6 +314,11 @@ export function Dashboard() {
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             Manage members and tokens for {formatMonthName(selectedMonth)}
+            {currentWinner && (
+              <span className="ml-2 inline-flex items-center gap-1">
+                • <Crown className="h-4 w-4 text-yellow-500" /> Winner: {currentWinner.full_name}
+              </span>
+            )}
           </p>
         </div>
 
@@ -293,31 +388,69 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.winnersSelected}</div>
+            {stats.drawnMembers > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {stats.drawnMembers} previously won
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Action Buttons and Search Bar - Mobile optimized with responsive layout */}
       <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
-        <Button
-          onClick={() => setIsAddDialogOpen(true)}
-          className="w-full sm:w-auto"
-          size="lg"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Member
-        </Button>
+        {/* Show Add Member and Assign Tokens only for starting month */}
+        {isStartingMonth && (
+          <>
+            <Button
+              onClick={() => setIsAddDialogOpen(true)}
+              className="w-full sm:w-auto"
+              size="lg"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Member
+            </Button>
 
-        <Button
-          variant="outline"
-          onClick={handleAssignTokens}
-          disabled={isAssigningTokens || members.length === 0}
-          className="w-full sm:w-auto"
-          size="lg"
-        >
-          <Hash className="mr-2 h-4 w-4" />
-          {isAssigningTokens ? 'Assigning Tokens...' : 'Assign Token Numbers'}
-        </Button>
+            <Button
+              variant="outline"
+              onClick={handleAssignTokens}
+              disabled={isAssigningTokens || members.length === 0}
+              className="w-full sm:w-auto"
+              size="lg"
+            >
+              <Hash className="mr-2 h-4 w-4" />
+              {isAssigningTokens ? 'Assigning Tokens...' : 'Assign Token Numbers'}
+            </Button>
+          </>
+        )}
+
+        {/* Declare Winner Button - Show if no winner declared yet */}
+        {!currentWinner && (
+          <Button
+            variant="outline"
+            onClick={() => setIsDeclareWinnerDialogOpen(true)}
+            disabled={members.filter(m => m.payment_status === 'paid' && m.token_number && m.draw_status === 'not_drawn').length === 0}
+            className="w-full sm:w-auto bg-yellow-50 hover:bg-yellow-100 border-yellow-200"
+            size="lg"
+          >
+            <Crown className="mr-2 h-4 w-4" />
+            Declare Winner
+          </Button>
+        )}
+
+        {/* Proceed to Next Month Button - Show if winner is declared */}
+        {currentWinner && DatabaseService.getNextMonth(selectedMonth) && (
+          <Button
+            variant="outline"
+            onClick={handleProceedToNextMonth}
+            disabled={isProceedingToNextMonth}
+            className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 border-blue-200"
+            size="lg"
+          >
+            <ArrowRight className="mr-2 h-4 w-4" />
+            {isProceedingToNextMonth ? 'Proceeding...' : `Proceed to ${formatMonthName(DatabaseService.getNextMonth(selectedMonth)!)}`}
+          </Button>
+        )}
 
         {/* Search Bar - Positioned alongside action buttons */}
         <div className="relative w-full sm:w-auto sm:ml-auto">
@@ -343,17 +476,20 @@ export function Dashboard() {
         members={filteredMembers}
         onEditMember={handleEditMember}
         onDeleteMember={handleDeleteMember}
+        onViewHistory={handleViewMemberHistory}
         isLoading={isLoading}
       />
 
-      {/* Add Member Dialog */}
-      <AddMemberDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onAddMember={handleAddMember}
-        isLoading={isLoading}
-        familySuggestions={familySuggestions}
-      />
+      {/* Add Member Dialog - Only shown for starting month */}
+      {isStartingMonth && (
+        <AddMemberDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          onAddMember={handleAddMember}
+          isLoading={isLoading}
+          familySuggestions={familySuggestions}
+        />
+      )}
 
       {/* Edit Member Dialog */}
       <EditMemberDialog
@@ -363,6 +499,22 @@ export function Dashboard() {
         member={editingMember}
         isLoading={isLoading}
         familySuggestions={familySuggestions}
+      />
+
+      {/* Declare Winner Dialog */}
+      <DeclareWinnerDialog
+        open={isDeclareWinnerDialogOpen}
+        onOpenChange={setIsDeclareWinnerDialogOpen}
+        onDeclareWinner={handleDeclareWinner}
+        members={members}
+        isLoading={isLoading}
+      />
+
+      {/* Member History Dialog */}
+      <MemberHistoryDialog
+        open={isMemberHistoryDialogOpen}
+        onOpenChange={setIsMemberHistoryDialogOpen}
+        member={historyMember}
       />
     </div>
   )

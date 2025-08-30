@@ -1,4 +1,4 @@
-import { supabase, Member, NewMember, MonthTable } from './supabase'
+import { supabase, Member, NewMember, MonthTable, MONTHS } from './supabase'
 import { generateTokenNumber, sortMembersAlphabetically } from './utils'
 
 /**
@@ -159,30 +159,33 @@ export class DatabaseService {
   }
 
   /**
-   * Assign token numbers to all members without tokens
-   * Generates unique 4-digit token numbers for each member
+   * Assign sequential token numbers to all members
+   * Generates clean sequential numbering starting from 1
+   * Clears existing tokens first to ensure proper sequence
    */
   static async assignTokenNumbers(monthTable: MonthTable): Promise<Member[]> {
     try {
       // First, get all current members
       const members = await this.getMembers(monthTable)
 
-      // Find members without token numbers
-      const membersWithoutTokens = members.filter(member => !member.token_number)
-
-      if (membersWithoutTokens.length === 0) {
-        throw new Error('All members already have token numbers assigned')
+      if (members.length === 0) {
+        throw new Error('No members found to assign tokens')
       }
 
-      // Get existing token numbers to avoid duplicates
-      const existingTokens = members
-        .filter(member => member.token_number)
-        .map(member => member.token_number as number)
+      // Clear all existing token numbers first to ensure clean sequence
+      for (const member of members) {
+        if (member.token_number) {
+          await this.updateMember(monthTable, member.id, {
+            token_number: null
+          })
+        }
+      }
 
-      // Generate unique tokens for members without them
+      // Now assign sequential tokens starting from 1
       const updatedMembers: Member[] = []
+      const existingTokens: number[] = []
 
-      for (const member of membersWithoutTokens) {
+      for (const member of members) {
         const tokenNumber = generateTokenNumber(existingTokens)
         existingTokens.push(tokenNumber) // Add to existing tokens to avoid duplicates
 
@@ -200,6 +203,182 @@ export class DatabaseService {
   }
 
   /**
+   * Declare a winner for the current month
+   * Updates the member's draw_status to 'winner'
+   */
+  static async declareWinner(monthTable: MonthTable, memberId: number): Promise<Member> {
+    try {
+      const updatedMember = await this.updateMember(monthTable, memberId, {
+        draw_status: 'winner'
+      })
+      return updatedMember
+    } catch (error) {
+      console.error('Database error in declareWinner:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get the current month's winner
+   * Returns null if no winner has been declared
+   */
+  static async getCurrentWinner(monthTable: MonthTable): Promise<Member | null> {
+    try {
+      const { data, error } = await supabase
+        .from(monthTable)
+        .select('*')
+        .eq('draw_status', 'winner')
+        .single()
+
+      if (error) {
+        // No winner found is not an error
+        if (error.code === 'PGRST116') {
+          return null
+        }
+        console.error(`Error fetching winner from ${monthTable}:`, error)
+        throw new Error(`Failed to fetch winner: ${error.message}`)
+      }
+
+      return data
+    } catch (error) {
+      console.error('Database error in getCurrentWinner:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Proceed to next month by copying current month data
+   * Resets payment status and clears paid_to for all members
+   * Maintains token numbers and other member information
+   * Updates previous winner's draw_status to 'drawn'
+   */
+  static async proceedToNextMonth(currentMonth: MonthTable): Promise<MonthTable> {
+    try {
+      // Get the next month in sequence
+      const currentIndex = MONTHS.indexOf(currentMonth)
+      if (currentIndex === -1) {
+        throw new Error('Invalid current month')
+      }
+
+      const nextIndex = (currentIndex + 1) % MONTHS.length
+      const nextMonth = MONTHS[nextIndex]
+
+      // Get all members from current month
+      const currentMembers = await this.getMembers(currentMonth)
+
+      if (currentMembers.length === 0) {
+        throw new Error('No members found in current month to copy')
+      }
+
+      // Check if next month already has data
+      const existingNextMonthMembers = await this.getMembers(nextMonth)
+      if (existingNextMonthMembers.length > 0) {
+        throw new Error('Next month already has data. Cannot proceed.')
+      }
+
+      // Find current month's winner
+      const currentWinner = await this.getCurrentWinner(currentMonth)
+
+      // Prepare members for next month
+      const membersForNextMonth = currentMembers.map(member => ({
+        full_name: member.full_name,
+        mobile_number: member.mobile_number,
+        family: member.family,
+        token_number: member.token_number,
+        payment_status: 'pending' as const,
+        paid_to: null,
+        draw_status: (currentWinner && member.id === currentWinner.id) ? 'drawn' as const : 'not_drawn' as const,
+        additional_information: member.additional_information
+      }))
+
+      // Insert all members to next month table
+      const { data, error } = await supabase
+        .from(nextMonth)
+        .insert(membersForNextMonth)
+        .select()
+
+      if (error) {
+        console.error(`Error copying members to ${nextMonth}:`, error)
+        throw new Error(`Failed to copy members to next month: ${error.message}`)
+      }
+
+      // Update current month's winner status to 'drawn' if exists
+      if (currentWinner) {
+        await this.updateMember(currentMonth, currentWinner.id, {
+          draw_status: 'drawn'
+        })
+      }
+
+      return nextMonth
+    } catch (error) {
+      console.error('Database error in proceedToNextMonth:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get member's history across all months
+   * Returns a map of month to member data (if exists)
+   */
+  static async getMemberHistory(memberName: string, mobileNumber: string): Promise<Record<MonthTable, Member | null>> {
+    try {
+      const history: Record<MonthTable, Member | null> = {} as Record<MonthTable, Member | null>
+
+      // Check each month for this member
+      for (const month of MONTHS) {
+        try {
+          const { data, error } = await supabase
+            .from(month)
+            .select('*')
+            .eq('full_name', memberName)
+            .eq('mobile_number', mobileNumber)
+            .single()
+
+          if (error) {
+            // Member not found in this month
+            if (error.code === 'PGRST116') {
+              history[month] = null
+            } else {
+              console.error(`Error fetching member from ${month}:`, error)
+              history[month] = null
+            }
+          } else {
+            history[month] = data
+          }
+        } catch (err) {
+          // Handle any other errors by setting to null
+          history[month] = null
+        }
+      }
+
+      return history
+    } catch (error) {
+      console.error('Database error in getMemberHistory:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Check if a month is the starting month (September)
+   * Used to determine if Add Member and Assign Tokens should be available
+   */
+  static isStartingMonth(monthTable: MonthTable): boolean {
+    return monthTable === 'september_2025'
+  }
+
+  /**
+   * Get the next month in sequence
+   * Returns null if current month is the last month
+   */
+  static getNextMonth(currentMonth: MonthTable): MonthTable | null {
+    const currentIndex = MONTHS.indexOf(currentMonth)
+    if (currentIndex === -1 || currentIndex === MONTHS.length - 1) {
+      return null
+    }
+    return MONTHS[currentIndex + 1]
+  }
+
+  /**
    * Get statistics for a specific month
    * Returns counts for different statuses
    */
@@ -213,7 +392,8 @@ export class DatabaseService {
         paidMembers: members.filter(m => m.payment_status === 'paid').length,
         pendingPayments: members.filter(m => m.payment_status === 'pending').length,
         overduePayments: members.filter(m => m.payment_status === 'overdue').length,
-        winnersSelected: members.filter(m => m.draw_status === 'winner').length
+        winnersSelected: members.filter(m => m.draw_status === 'winner').length,
+        drawnMembers: members.filter(m => m.draw_status === 'drawn').length
       }
 
       return stats

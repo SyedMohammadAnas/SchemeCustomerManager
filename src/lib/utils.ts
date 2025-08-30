@@ -34,15 +34,27 @@ export function validatePhoneNumber(phone: string): boolean {
 }
 
 /**
- * Generate a random token number for member assignment
- * Used when assigning tokens to members
+ * Generate a sequential token number for member assignment
+ * Creates clean sequential numbering starting from 1
  */
 export function generateTokenNumber(existingTokens: number[]): number {
-  let token: number
-  do {
-    token = Math.floor(Math.random() * 9000) + 1000 // 4-digit numbers
-  } while (existingTokens.includes(token))
-  return token
+  // Find the next available sequential number
+  let nextToken = 1
+  while (existingTokens.includes(nextToken)) {
+    nextToken++
+  }
+  return nextToken
+}
+
+/**
+ * Format token number for display with "#" prefix
+ * Converts token number to "#1", "#2", "#3" format
+ */
+export function formatTokenDisplay(tokenNumber: number | null): string {
+  if (tokenNumber === null || tokenNumber === undefined) {
+    return '—'
+  }
+  return `#${tokenNumber}`
 }
 
 /**

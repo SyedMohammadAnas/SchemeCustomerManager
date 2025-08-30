@@ -12,9 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Edit2, Trash2, Hash, Phone, User, CreditCard, Trophy, Info, Users } from "lucide-react"
+import { Edit2, Trash2, Hash, Phone, User, CreditCard, Trophy, Info, Users, History } from "lucide-react"
 import { Member } from "@/lib/supabase"
-import { formatPhoneNumber } from "@/lib/utils"
+import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 
 /**
  * Props for the MembersTable component
@@ -23,6 +23,7 @@ interface MembersTableProps {
   members: Member[]
   onEditMember: (member: Member) => void
   onDeleteMember: (memberId: number) => void
+  onViewHistory: (member: Member) => void
   isLoading?: boolean
 }
 
@@ -52,7 +53,7 @@ const getDrawStatusBadge = (status: Member['draw_status']) => {
     case 'winner':
       return <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600">Winner</Badge>
     case 'drawn':
-      return <Badge variant="outline">Drawn</Badge>
+      return <Badge variant="outline" className="bg-gray-100 text-gray-600">Previously Won</Badge>
     case 'not_drawn':
       return <Badge variant="secondary">Not Drawn</Badge>
     default:
@@ -61,27 +62,55 @@ const getDrawStatusBadge = (status: Member['draw_status']) => {
 }
 
 /**
+ * Get row styling based on member status
+ * Highlights winners and dims previously drawn members
+ */
+const getRowStyling = (member: Member) => {
+  if (member.draw_status === 'winner') {
+    return 'bg-yellow-50 border-yellow-200 border-2'
+  }
+  if (member.draw_status === 'drawn') {
+    return 'bg-gray-50 opacity-75'
+  }
+  return ''
+}
+
+/**
  * Mobile Member Card Component
  * Displays member information in a card format optimized for mobile devices
  */
-function MobileMemberCard({ member, onEditMember, onDeleteMember }: {
+function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory }: {
   member: Member
   onEditMember: (member: Member) => void
   onDeleteMember: (memberId: number) => void
+  onViewHistory: (member: Member) => void
 }) {
   return (
-    <Card className="mb-4">
+    <Card className={`mb-4 ${getRowStyling(member)}`}>
       <CardContent className="p-4 space-y-3">
         {/* Header with Token */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {member.token_number && (
               <Badge variant="outline" className="font-mono text-xs">
-                Token: {member.token_number}
+                {formatTokenDisplay(member.token_number)}
               </Badge>
+            )}
+            {member.draw_status === 'winner' && (
+              <Trophy className="h-4 w-4 text-yellow-500" />
             )}
           </div>
           <div className="flex items-center space-x-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onViewHistory(member)}
+              className="h-8 w-8"
+              title="View History"
+            >
+              <History className="h-4 w-4" />
+              <span className="sr-only">View member history</span>
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -104,56 +133,49 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember }: {
         </div>
 
         {/* Member Name */}
-        <div className="flex items-center space-x-2">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-base">{member.full_name}</span>
-        </div>
-
-        {/* Mobile Number */}
-        <div className="flex items-center space-x-2">
-          <Phone className="h-4 w-4 text-muted-foreground" />
-          <span className="font-mono text-sm">{formatPhoneNumber(member.mobile_number)}</span>
-        </div>
-
-        {/* Family */}
-        <div className="flex items-center space-x-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">
-            {member.family === 'Individual' ? (
-              <Badge variant="outline" className="text-xs border-blue-500 text-blue-700">Individual</Badge>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Badge variant="secondary" className="text-xs">{member.family}</Badge>
-                <span className="text-xs text-muted-foreground">Family</span>
-              </div>
-            )}
-          </span>
-        </div>
-
-        {/* Status Row */}
-        <div className="flex items-center justify-between">
+        <div className="space-y-1">
           <div className="flex items-center space-x-2">
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-            {getPaymentStatusBadge(member.payment_status)}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Trophy className="h-4 w-4 text-muted-foreground" />
-            {getDrawStatusBadge(member.draw_status)}
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{member.full_name}</span>
           </div>
         </div>
 
-        {/* Additional Information */}
-        {member.additional_information && (
-          <div className="flex items-start space-x-2 pt-2 border-t">
-            <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
-            <span className="text-sm text-muted-foreground">{member.additional_information}</span>
+        {/* Contact Information */}
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">{formatPhoneNumber(member.mobile_number)}</span>
+          </div>
+        </div>
+
+        {/* Family Information */}
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">{member.family}</span>
+          </div>
+        </div>
+
+        {/* Status Badges */}
+        <div className="flex flex-wrap gap-2">
+          {getPaymentStatusBadge(member.payment_status)}
+          {getDrawStatusBadge(member.draw_status)}
+        </div>
+
+        {/* Payment Information */}
+        {member.paid_to && (
+          <div className="text-xs text-muted-foreground">
+            Paid to: {member.paid_to}
           </div>
         )}
 
-        {/* Paid To Information */}
-        {member.paid_to && (
-          <div className="text-xs text-muted-foreground pt-1">
-            Paid to: {member.paid_to}
+        {/* Additional Information */}
+        {member.additional_information && (
+          <div className="pt-2 border-t">
+            <div className="flex items-start space-x-2">
+              <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <p className="text-sm text-muted-foreground">{member.additional_information}</p>
+            </div>
           </div>
         )}
       </CardContent>
@@ -162,38 +184,54 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember }: {
 }
 
 /**
- * Professional Members Table Component
- * Displays all members with their information in a clean, sortable format
- * Includes action buttons for editing and deleting members
- * Mobile-responsive with card layout on small screens and table on larger screens
+ * Members Table Component
+ * Displays the complete list of members with all their information
+ * Mobile-first responsive design with progressive enhancement
  */
-export function MembersTable({ members, onEditMember, onDeleteMember, isLoading }: MembersTableProps) {
+export function MembersTable({
+  members,
+  onEditMember,
+  onDeleteMember,
+  onViewHistory,
+  isLoading = false
+}: MembersTableProps) {
+  // Loading state
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Members Register</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Members
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-32">
-            <div className="text-muted-foreground">Loading members...</div>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading members...</p>
           </div>
         </CardContent>
       </Card>
     )
   }
 
+  // Empty state
   if (members.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Members Register</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Members
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-32">
-            <div className="text-muted-foreground text-center px-4">
-              No members added yet. Click "Add Member" to get started.
-            </div>
+          <div className="text-center py-8">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <h3 className="text-lg font-medium mb-2">No members found</h3>
+            <p className="text-muted-foreground">
+              Start by adding your first member to the scheme register.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -203,130 +241,116 @@ export function MembersTable({ members, onEditMember, onDeleteMember, isLoading 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl">Members Register ({members.length} members)</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Members ({members.length})
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        {/* Mobile View - Card Layout */}
-        <div className="block lg:hidden">
-          <div className="space-y-2">
-            {members.map((member) => (
-              <MobileMemberCard
-                key={member.id}
-                member={member}
-                onEditMember={onEditMember}
-                onDeleteMember={onDeleteMember}
-              />
-            ))}
-          </div>
+      <CardContent className="p-0">
+        {/* Mobile View */}
+        <div className="block md:hidden p-4 space-y-4">
+          {members.map((member) => (
+            <MobileMemberCard
+              key={member.id}
+              member={member}
+              onEditMember={onEditMember}
+              onDeleteMember={onDeleteMember}
+              onViewHistory={onViewHistory}
+            />
+          ))}
         </div>
 
-        {/* Desktop View - Table Layout */}
-        <div className="hidden lg:block">
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px] underline-offset-4 underline decoration-dashed font-extrabold">Token #</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Full Name</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Mobile Number</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Family</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Payment Status</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Paid To</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Draw Status</TableHead>
-                  <TableHead className="font-extrabold underline-offset-4 underline decoration-dashed">Additional Info</TableHead>
-                  <TableHead className="text-right w-[100px] underline-offset-4 underline decoration-dashed font-extrabold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member) => (
-                  <TableRow key={member.id}>
-                    {/* Token Number */}
-                    <TableCell>
+        {/* Desktop View */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[60px]">Token</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Family</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Paid To</TableHead>
+                <TableHead>Draw Status</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((member) => (
+                <TableRow
+                  key={member.id}
+                  className={getRowStyling(member)}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
                       {member.token_number ? (
-                        <Badge variant="outline" className="font-mono">
-                          {member.token_number}
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {formatTokenDisplay(member.token_number)}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-sm">Not assigned</span>
+                        <Hash className="h-4 w-4 text-muted-foreground" />
                       )}
-                    </TableCell>
-
-                    {/* Full Name */}
-                    <TableCell className="font-medium">
-                      {member.full_name}
-                    </TableCell>
-
-                    {/* Mobile Number */}
-                    <TableCell className="font-mono">
-                      {formatPhoneNumber(member.mobile_number)}
-                    </TableCell>
-
-                    {/* Family */}
-                    <TableCell>
-                      {member.family === 'Individual' ? (
-                        <Badge variant="outline" className="text-xs ">Individual</Badge>
-                      ) : (
-                        <div className="flex flex-col items-start space-y-1">
-                          <Badge variant="secondary" className="text-xs border-blue-500 text-blue-500">{member.family}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Family member
-                          </span>
-                        </div>
+                      {member.draw_status === 'winner' && (
+                        <Trophy className="h-4 w-4 text-yellow-500" />
                       )}
-                    </TableCell>
-
-                    {/* Payment Status */}
-                    <TableCell>
-                      {getPaymentStatusBadge(member.payment_status)}
-                    </TableCell>
-
-                    {/* Paid To */}
-                    <TableCell>
-                      {member.paid_to || <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-
-                    {/* Draw Status */}
-                    <TableCell>
-                      {getDrawStatusBadge(member.draw_status)}
-                    </TableCell>
-
-                    {/* Additional Information */}
-                    <TableCell>
-                      {member.additional_information ? (
-                        <span className="text-sm">{member.additional_information}</span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-
-                    {/* Action Buttons */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onEditMember(member)}
-                          className="h-8 w-8"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                          <span className="sr-only">Edit member</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDeleteMember(member.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete member</span>
-                        </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{member.full_name}</TableCell>
+                  <TableCell>{formatPhoneNumber(member.mobile_number)}</TableCell>
+                  <TableCell>{member.family}</TableCell>
+                  <TableCell>{getPaymentStatusBadge(member.payment_status)}</TableCell>
+                  <TableCell>
+                    {member.paid_to && (
+                      <Badge variant="outline" className="text-xs">
+                        {member.paid_to}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>{getDrawStatusBadge(member.draw_status)}</TableCell>
+                  <TableCell className="max-w-[200px]">
+                    {member.additional_information && (
+                      <div className="truncate text-sm text-muted-foreground" title={member.additional_information}>
+                        {member.additional_information}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onViewHistory(member)}
+                        className="h-8 w-8"
+                        title="View History"
+                      >
+                        <History className="h-4 w-4" />
+                        <span className="sr-only">View member history</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEditMember(member)}
+                        className="h-8 w-8"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        <span className="sr-only">Edit member</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDeleteMember(member.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete member</span>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>

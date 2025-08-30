@@ -331,7 +331,7 @@ export function Dashboard() {
             Manage members and tokens for {formatMonthName(selectedMonth)}
             {currentWinner && (
               <span className="ml-2 inline-flex items-center gap-1">
-                • <Crown className="h-4 w-4 text-yellow-500" /> Winner: {currentWinner.full_name}
+                &bull; <Crown className="h-4 w-4 text-yellow-500" /> Winner: {currentWinner.full_name}
               </span>
             )}
           </p>
@@ -447,7 +447,8 @@ export function Dashboard() {
                   variant="outline"
                   onClick={() => setIsDeclareWinnerDialogOpen(true)}
                   disabled={members.filter(m => m.payment_status === 'paid' && m.token_number && m.draw_status === 'not_drawn').length === 0}
-                  className="w-full mt-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-500 h-8 text-xs"
+                  className="w-full mt-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-5clear
+                  00 h-8 text-xs"
                   size="sm"
                 >
                   <Crown className="mr-1 h-3 w-3" />

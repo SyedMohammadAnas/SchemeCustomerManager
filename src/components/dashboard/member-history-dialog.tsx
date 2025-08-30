@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Member, MonthTable, formatMonthName, MONTHS } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { DatabaseService } from "@/lib/database"
-import { History, User, Trophy, CreditCard, Clock, CheckCircle, XCircle } from "lucide-react"
+import { History, User, Trophy, Clock, CheckCircle, XCircle } from "lucide-react"
 
 interface MemberHistoryDialogProps {
   open: boolean
@@ -37,18 +37,9 @@ export function MemberHistoryDialog({
   const [error, setError] = React.useState<string | null>(null)
 
   /**
-   * Load member history when dialog opens
-   */
-  React.useEffect(() => {
-    if (open && member) {
-      loadMemberHistory()
-    }
-  }, [open, member])
-
-  /**
    * Fetch member history across all months
    */
-  const loadMemberHistory = async () => {
+  const loadMemberHistory = React.useCallback(async () => {
     if (!member) return
 
     try {
@@ -63,7 +54,16 @@ export function MemberHistoryDialog({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [member])
+
+  /**
+   * Load member history when dialog opens
+   */
+  React.useEffect(() => {
+    if (open && member) {
+      loadMemberHistory()
+    }
+  }, [open, member, loadMemberHistory])
 
   /**
    * Get status icon based on member data for a month

@@ -11,8 +11,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Member } from "@/lib/supabase"
-import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
-import { User, Phone, Users, Hash, AlertCircle } from "lucide-react"
+import { formatTokenDisplay } from "@/lib/utils"
+import { User, Users, AlertCircle } from "lucide-react"
 
 /**
  * Props for the Unpaid Members Dialog component
@@ -48,7 +48,7 @@ export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembe
             Unpaid Members
           </DialogTitle>
           <DialogDescription>
-            Members who haven't completed their payment for this month
+            Members who haven&apos;t completed their payment for this month
           </DialogDescription>
         </DialogHeader>
 

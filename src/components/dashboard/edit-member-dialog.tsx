@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Member, NewMember, PaidToRecipient } from "@/lib/supabase"
+import { Member, NewMember, PaymentStatus } from "@/lib/supabase"
 import { validatePhoneNumber } from "@/lib/utils"
 
 /**
@@ -311,7 +311,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               )}
               {formData.family && formData.family !== 'Individual' && formData.family !== '__new__' && member && (
                 <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
-                  <strong>Family Info:</strong> This member belongs to the "{formData.family}" family.
+                  <strong>Family Info:</strong> This member belongs to the &ldquo;{formData.family}&rdquo; family.
                 </p>
               )}
             </div>
@@ -326,7 +326,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               </Label>
               <Select
                 value={formData.payment_status}
-                onValueChange={(value) => handleInputChange('payment_status', value as any)}
+                onValueChange={(value) => handleInputChange('payment_status', value as PaymentStatus)}
               >
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue />

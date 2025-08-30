@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { NewMember, PaidToRecipient } from "@/lib/supabase"
+import { NewMember, PaymentStatus } from "@/lib/supabase"
 import { validatePhoneNumber } from "@/lib/utils"
 
 /**
@@ -279,7 +279,7 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
               </Label>
               <Select
                 value={formData.payment_status}
-                onValueChange={(value) => handleInputChange('payment_status', value as any)}
+                onValueChange={(value) => handleInputChange('payment_status', value as PaymentStatus)}
               >
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue />

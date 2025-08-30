@@ -1,5 +1,5 @@
 import { supabase, Member, NewMember, MonthTable, MONTHS } from './supabase'
-import { generateTokenNumber, sortMembersAlphabetically } from './utils'
+
 
 /**
  * Database service class for handling all member-related operations
@@ -108,7 +108,7 @@ export class DatabaseService {
   ): Promise<Member> {
     try {
       // If family is being changed, handle mobile number sharing
-      let finalUpdates = { ...updates }
+      const finalUpdates = { ...updates }
       if (updates.family && updates.family !== 'Individual') {
         const existingFamilyMembers = await this.getFamilyMembers(monthTable, updates.family)
         if (existingFamilyMembers.length > 0) {
@@ -292,7 +292,7 @@ export class DatabaseService {
       }))
 
       // Insert all members to next month table
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from(nextMonth)
         .insert(membersForNextMonth)
         .select()
@@ -345,7 +345,7 @@ export class DatabaseService {
           } else {
             history[month] = data
           }
-        } catch (err) {
+        } catch {
           // Handle any other errors by setting to null
           history[month] = null
         }

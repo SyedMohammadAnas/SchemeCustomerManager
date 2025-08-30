@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Edit2, Trash2, Hash, Phone, User, CreditCard, Trophy, Info, Users, History } from "lucide-react"
+import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History } from "lucide-react"
 import { Member } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 

@@ -252,27 +252,6 @@ export function MemberHistoryDialog({
           </div>
         )}
 
-        {/* Summary statistics */}
-        {!isLoading && !error && (
-          <div className="pt-4 border-t">
-            <h4 className="font-medium text-sm mb-2">Summary</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Months Participated:</span>
-                <span className="ml-2 font-medium">
-                  {Object.values(memberHistory).filter(m => m !== null).length}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Times Won:</span>
-                <span className="ml-2 font-medium">
-                  {Object.values(memberHistory).filter(m => m?.draw_status === 'winner').length}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="flex justify-end pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close

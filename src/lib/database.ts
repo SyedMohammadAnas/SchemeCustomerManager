@@ -10,6 +10,7 @@ export class DatabaseService {
   /**
    * Fetch all members from a specific month table
    * Returns members sorted alphabetically by full name
+   * This alphabetical sorting is used for consistent token assignment
    */
   static async getMembers(monthTable: MonthTable): Promise<Member[]> {
     try {
@@ -159,13 +160,13 @@ export class DatabaseService {
   }
 
   /**
-   * Assign sequential token numbers to all members
-   * Generates clean sequential numbering starting from 1
+   * Assign sequential token numbers to all members in alphabetical order
+   * Generates clean sequential numbering starting from 1 based on name sorting
    * Clears existing tokens first to ensure proper sequence
    */
   static async assignTokenNumbers(monthTable: MonthTable): Promise<Member[]> {
     try {
-      // First, get all current members
+      // First, get all current members sorted alphabetically
       const members = await this.getMembers(monthTable)
 
       if (members.length === 0) {
@@ -181,13 +182,12 @@ export class DatabaseService {
         }
       }
 
-      // Now assign sequential tokens starting from 1
+      // Now assign sequential tokens starting from 1 in alphabetical order
       const updatedMembers: Member[] = []
-      const existingTokens: number[] = []
 
-      for (const member of members) {
-        const tokenNumber = generateTokenNumber(existingTokens)
-        existingTokens.push(tokenNumber) // Add to existing tokens to avoid duplicates
+      for (let i = 0; i < members.length; i++) {
+        const member = members[i]
+        const tokenNumber = i + 1 // Sequential numbering starting from 1
 
         const updatedMember = await this.updateMember(monthTable, member.id, {
           token_number: tokenNumber

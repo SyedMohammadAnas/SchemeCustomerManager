@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Member } from "@/lib/supabase"
 import { Trophy, User } from "lucide-react"
+import { formatTokenDisplay } from "@/lib/utils"
 
 interface DeclareWinnerDialogProps {
   open: boolean
@@ -124,7 +125,7 @@ export function DeclareWinnerDialog({
                         <div className="flex-1">
                           <div className="font-medium">{member.full_name}</div>
                           <div className="text-xs text-muted-foreground">
-                            Token #{member.token_number} • {member.family}
+                            Token {formatTokenDisplay(member.token_number)} • {member.family}
                           </div>
                         </div>
                       </div>
@@ -150,7 +151,7 @@ export function DeclareWinnerDialog({
               </div>
               <div className="mt-1 text-sm text-yellow-700">
                 <div><strong>{selectedMember.full_name}</strong></div>
-                <div>Token #{selectedMember.token_number} • {selectedMember.family}</div>
+                <div>Token {formatTokenDisplay(selectedMember.token_number)} • {selectedMember.family}</div>
                 <div>Mobile: {selectedMember.mobile_number}</div>
               </div>
             </div>

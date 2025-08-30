@@ -152,7 +152,13 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory 
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">{member.family}</span>
+            {member.family === 'Individual' ? (
+              <span className="text-sm text-muted-foreground">{member.family}</span>
+            ) : (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                {member.family}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -265,15 +271,15 @@ export function MembersTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[60px]">Token</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Mobile</TableHead>
-                <TableHead>Family</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Paid To</TableHead>
-                <TableHead>Draw Status</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead className="w-[120px]">Actions</TableHead>
+                <TableHead className="w-[60px] text-lg underline underline-offset-4">Token</TableHead>
+                <TableHead className="text-lg underline underline-offset-4">Name</TableHead>
+                <TableHead className="text-lg underline underline-offset-4   ">Mobile</TableHead>
+                <TableHead className="text-lg underline underline-offset-4">Family</TableHead>
+                <TableHead className="text-lg underline underline-offset-4">Payment</TableHead>
+                <TableHead className="text-lg underline underline-offset-4">Paid To</TableHead>
+                <TableHead className="text-lg underline underline-offset-4">Draw Status</TableHead>
+                <TableHead className="text-lg underline underline-offset-4">Notes</TableHead>
+                <TableHead className="w-[120px] text-lg underline underline-offset-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,7 +304,15 @@ export function MembersTable({
                   </TableCell>
                   <TableCell className="font-medium">{member.full_name}</TableCell>
                   <TableCell>{formatPhoneNumber(member.mobile_number)}</TableCell>
-                  <TableCell>{member.family}</TableCell>
+                  <TableCell>
+                    {member.family === 'Individual' ? (
+                      <span className="text-sm text-muted-foreground">{member.family}</span>
+                    ) : (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                        {member.family}
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>{getPaymentStatusBadge(member.payment_status)}</TableCell>
                   <TableCell>
                     {member.paid_to && (

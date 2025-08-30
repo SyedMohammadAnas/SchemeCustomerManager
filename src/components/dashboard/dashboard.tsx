@@ -3,15 +3,18 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown } from "lucide-react"
+import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown, AlertCircle } from "lucide-react"
 import { MonthSelector } from "./month-selector"
 import { MembersTable } from "./members-table"
 import { AddMemberDialog } from "./add-member-dialog"
 import { EditMemberDialog } from "./edit-member-dialog"
 import { DeclareWinnerDialog } from "./declare-winner-dialog"
 import { MemberHistoryDialog } from "./member-history-dialog"
+import { PreviousWinnersDialog } from "./previous-winners-dialog"
+import { UnpaidMembersDialog } from "./unpaid-members-dialog"
 import { DatabaseService } from "@/lib/database"
 import { Member, NewMember, MonthTable, formatMonthName } from "@/lib/supabase"
+import { formatTokenDisplay } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 
 /**
@@ -43,6 +46,8 @@ export function Dashboard() {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeclareWinnerDialogOpen, setIsDeclareWinnerDialogOpen] = React.useState(false)
   const [isMemberHistoryDialogOpen, setIsMemberHistoryDialogOpen] = React.useState(false)
+  const [isPreviousWinnersDialogOpen, setIsPreviousWinnersDialogOpen] = React.useState(false)
+  const [isUnpaidMembersDialogOpen, setIsUnpaidMembersDialogOpen] = React.useState(false)
   const [editingMember, setEditingMember] = React.useState<Member | null>(null)
   const [historyMember, setHistoryMember] = React.useState<Member | null>(null)
 
@@ -285,24 +290,34 @@ export function Dashboard() {
   }, [members, searchQuery])
 
   /**
-   * Calculate dashboard statistics based on filtered members
-   */
-  const stats = React.useMemo(() => {
-    return {
-      totalMembers: members.length,
-      membersWithTokens: members.filter(m => m.token_number).length,
-      paidMembers: members.filter(m => m.payment_status === 'paid').length,
-      winnersSelected: members.filter(m => m.draw_status === 'winner').length,
-      drawnMembers: members.filter(m => m.draw_status === 'drawn').length,
-      // Add filtered count for search results
-      filteredCount: filteredMembers.length
-    }
-  }, [members, filteredMembers])
-
-  /**
    * Check if current month is starting month for conditional features
    */
   const isStartingMonth = DatabaseService.isStartingMonth(selectedMonth)
+
+  /**
+   * Calculate dashboard statistics based on filtered members
+   */
+  const stats = React.useMemo(() => {
+    const totalWinners = members.filter(m => m.draw_status === 'winner').length
+    const drawnMembers = members.filter(m => m.draw_status === 'drawn').length
+
+    // Adjust paid members count: if there's a winner and we're not in starting month, exclude the winner
+    let paidMembersCount = members.filter(m => m.payment_status === 'paid').length
+    if (currentWinner && !isStartingMonth) {
+      paidMembersCount = Math.max(0, paidMembersCount - 1) // Subtract 1 for the winner
+    }
+
+    return {
+      totalMembers: members.length,
+      membersWithTokens: members.filter(m => m.token_number).length,
+      paidMembers: paidMembersCount,
+      winnersSelected: totalWinners,
+      drawnMembers: drawnMembers,
+      totalWinners: totalWinners + drawnMembers, // Current + previous winners
+      // Add filtered count for search results
+      filteredCount: filteredMembers.length
+    }
+  }, [members, filteredMembers, currentWinner, isStartingMonth])
 
   return (
     <div className="container mx-auto px-4 py-4 space-y-4 sm:px-6 sm:py-6 lg:py-8">
@@ -349,6 +364,19 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.totalMembers}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalWinners} winners
+            </p>
+            {/* Previous Winners Button */}
+            <Button
+              variant="outline"
+              onClick={() => setIsPreviousWinnersDialogOpen(true)}
+              className="w-full mt-7 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-500 h-8 text-xs"
+              size="sm"
+            >
+              <Trophy className="mr-1 h-3 w-3" />
+              Previous Winners
+            </Button>
           </CardContent>
         </Card>
 
@@ -377,21 +405,55 @@ export function Dashboard() {
             <p className="text-xs text-muted-foreground">
               of {stats.totalMembers} members
             </p>
+            {/* Unpaid Members Button */}
+            <Button
+              variant="outline"
+              onClick={() => setIsUnpaidMembersDialogOpen(true)}
+              className="w-full mt-7 bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 h-8 text-xs"
+              size="sm"
+            >
+              <AlertCircle className="mr-1 h-3 w-3" />
+              Unpaid ({members.filter(m => m.payment_status === 'pending' || m.payment_status === 'overdue').length})
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Winners Card */}
-        <Card className="min-h-[80px] sm:min-h-[100px]">
+        {/* Current Month Winner Card */}
+        <Card className={`min-h-[80px] sm:min-h-[100px] ${currentWinner ? 'border-2 border-yellow-200 bg-yellow-50/30' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
-            <CardTitle className="text-xs font-medium sm:text-xl">Winners</CardTitle>
-            <Trophy className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+            <CardTitle className="text-xs font-medium sm:text-xl">Current Month Winner</CardTitle>
+            <Trophy className={`h-3 w-3 sm:h-4 sm:w-4 ${currentWinner ? 'text-yellow-600' : 'text-muted-foreground'}`} />
           </CardHeader>
           <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
-            <div className="text-xl font-bold sm:text-2xl">{stats.winnersSelected}</div>
-            {stats.drawnMembers > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {stats.drawnMembers} previously won
-              </p>
+            {currentWinner ? (
+              <div className="space-y-2">
+                <div className="text-lg font-bold sm:text-xl text-yellow-700">{currentWinner.full_name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {currentWinner.family} • {currentWinner.mobile_number}
+                </div>
+                {currentWinner.token_number && (
+                  <div className="text-xs text-muted-foreground">
+                    Token {formatTokenDisplay(currentWinner.token_number)}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-14">
+                <div className="text-sm text-muted-foreground">
+                  No winner declared yet
+                </div>
+                {/* Declare Winner Button */}
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeclareWinnerDialogOpen(true)}
+                  disabled={members.filter(m => m.payment_status === 'paid' && m.token_number && m.draw_status === 'not_drawn').length === 0}
+                  className="w-full mt-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-500 h-8 text-xs"
+                  size="sm"
+                >
+                  <Crown className="mr-1 h-3 w-3" />
+                  Declare Winner
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -419,23 +481,9 @@ export function Dashboard() {
               size="lg"
             >
               <Hash className="mr-2 h-4 w-4" />
-              {isAssigningTokens ? 'Assigning Tokens...' : 'Assign Token Numbers'}
+              {isAssigningTokens ? 'Assigning Tokens...' : 'Assign Alphabetical Tokens'}
             </Button>
           </>
-        )}
-
-        {/* Declare Winner Button - Show if no winner declared yet */}
-        {!currentWinner && (
-          <Button
-            variant="outline"
-            onClick={() => setIsDeclareWinnerDialogOpen(true)}
-            disabled={members.filter(m => m.payment_status === 'paid' && m.token_number && m.draw_status === 'not_drawn').length === 0}
-            className="w-full sm:w-auto bg-yellow-50 hover:bg-yellow-100 border-yellow-200"
-            size="lg"
-          >
-            <Crown className="mr-2 h-4 w-4" />
-            Declare Winner
-          </Button>
         )}
 
         {/* Proceed to Next Month Button - Show if winner is declared */}
@@ -515,6 +563,19 @@ export function Dashboard() {
         open={isMemberHistoryDialogOpen}
         onOpenChange={setIsMemberHistoryDialogOpen}
         member={historyMember}
+      />
+
+      {/* Previous Winners Dialog */}
+      <PreviousWinnersDialog
+        open={isPreviousWinnersDialogOpen}
+        onOpenChange={setIsPreviousWinnersDialogOpen}
+      />
+
+      {/* Unpaid Members Dialog */}
+      <UnpaidMembersDialog
+        open={isUnpaidMembersDialogOpen}
+        onOpenChange={setIsUnpaidMembersDialogOpen}
+        members={members}
       />
     </div>
   )

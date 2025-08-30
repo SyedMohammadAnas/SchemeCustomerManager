@@ -58,21 +58,26 @@ export interface NewMember {
 /**
  * List of all available months for the scheme
  * Used for table selection and month navigation
- * Reordered to start from September as the primary month
+ * Starting from September 2025 and extending for 16 months total
+ * This covers the complete scheme period from September 2025 to December 2026
  */
 export const MONTHS = [
   'september_2025',
   'october_2025',
   'november_2025',
   'december_2025',
-  'january_2025',
-  'february_2025',
-  'march_2025',
-  'april_2025',
-  'may_2025',
-  'june_2025',
-  'july_2025',
-  'august_2025'
+  'january_2026',
+  'february_2026',
+  'march_2026',
+  'april_2026',
+  'may_2026',
+  'june_2026',
+  'july_2026',
+  'august_2026',
+  'september_2026',
+  'october_2026',
+  'november_2026',
+  'december_2026'
 ] as const
 
 export type MonthTable = typeof MONTHS[number]

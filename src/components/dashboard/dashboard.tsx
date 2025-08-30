@@ -4,6 +4,9 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown, AlertCircle } from "lucide-react"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { ThemeIndicator } from "@/components/ui/theme-indicator"
+import { ThemeSwitch } from "@/components/ui/theme-switch"
 import { MonthSelector } from "./month-selector"
 import { MembersTable } from "./members-table"
 import { AddMemberDialog } from "./add-member-dialog"
@@ -337,13 +340,22 @@ export function Dashboard() {
           </p>
         </div>
 
-        {/* Month selector - Full width on mobile, auto width on larger screens */}
-        <div className="w-full sm:w-auto">
-          <MonthSelector
-            selectedMonth={selectedMonth}
-            onMonthChange={handleMonthChange}
-            className="w-full sm:w-auto"
-          />
+        {/* Right side controls - Month selector and theme toggle */}
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
+          {/* Month selector - Full width on mobile, auto width on larger screens */}
+          <div className="w-full sm:w-auto">
+            <MonthSelector
+              selectedMonth={selectedMonth}
+              onMonthChange={handleMonthChange}
+              className="w-full sm:w-auto"
+            />
+          </div>
+
+          {/* Theme controls */}
+          <div className="flex items-center gap-2 justify-center sm:justify-end">
+            <ThemeIndicator />
+            <ThemeSwitch />
+          </div>
         </div>
       </div>
 

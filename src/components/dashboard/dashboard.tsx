@@ -13,6 +13,7 @@ import { DeclareWinnerDialog } from "./declare-winner-dialog"
 import { MemberHistoryDialog } from "./member-history-dialog"
 import { PreviousWinnersDialog } from "./previous-winners-dialog"
 import { UnpaidMembersDialog } from "./unpaid-members-dialog"
+import { ReceiptDialog } from "./receipt-dialog"
 import { DatabaseService } from "@/lib/database"
 import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
@@ -83,8 +84,10 @@ export function Dashboard() {
   const [isMemberHistoryDialogOpen, setIsMemberHistoryDialogOpen] = React.useState(false)
   const [isPreviousWinnersDialogOpen, setIsPreviousWinnersDialogOpen] = React.useState(false)
   const [isUnpaidMembersDialogOpen, setIsUnpaidMembersDialogOpen] = React.useState(false)
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false)
   const [editingMember, setEditingMember] = React.useState<Member | null>(null)
   const [historyMember, setHistoryMember] = React.useState<Member | null>(null)
+  const [receiptMember, setReceiptMember] = React.useState<Member | null>(null)
 
   // Loading states for various operations
   const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
@@ -351,6 +354,14 @@ export function Dashboard() {
   const handleViewMemberHistory = (member: Member) => {
     setHistoryMember(member)
     setIsMemberHistoryDialogOpen(true)
+  }
+
+  /**
+   * Handle viewing member receipt
+   */
+  const handleViewReceipt = (member: Member) => {
+    setReceiptMember(member)
+    setIsReceiptDialogOpen(true)
   }
 
   /**
@@ -798,6 +809,7 @@ export function Dashboard() {
         onEditMember={handleEditMember}
         onDeleteMember={handleDeleteMember}
         onViewHistory={handleViewMemberHistory}
+        onViewReceipt={handleViewReceipt}
         isLoading={isLoading}
         currentMonth={selectedMonth}
       />
@@ -853,6 +865,14 @@ export function Dashboard() {
         members={members}
         onPaymentStatusChange={handlePaymentStatusChange}
         onPaidToChange={handlePaidToChange}
+      />
+
+      {/* Receipt Dialog */}
+      <ReceiptDialog
+        open={isReceiptDialogOpen}
+        onOpenChange={setIsReceiptDialogOpen}
+        member={receiptMember}
+        currentMonth={selectedMonth}
       />
     </div>
     </div>

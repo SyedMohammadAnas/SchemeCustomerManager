@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test - RAFI Scheme</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 20px; margin: 40px 0; }
+        .icon-item { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        .icon-item img { max-width: 100%; height: auto; }
+        .install-btn { background: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+        .install-btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🚀 RAFI Gold Saving Scheme PWA Test</h1>
+    <p>This page tests your PWA configuration and icons.</p>
+
+    <button class="install-btn" id="installBtn" style="display: none;">Install App</button>
+
+    <h2>📱 PWA Icons Test</h2>
+    <div class="icon-grid">
+        <div class="icon-item">
+            <h3>72x72</h3>
+            <img src="/Logos/android/android-launchericon-72-72.png" alt="72x72 icon">
+        </div>
+        <div class="icon-item">
+            <h3>96x96</h3>
+            <img src="/Logos/android/android-launchericon-96-96.png" alt="96x96 icon">
+        </div>
+        <div class="icon-item">
+            <h3>128x128</h3>
+            <img src="/Logos/ios/128.png" alt="128x128 icon">
+        </div>
+        <div class="icon-item">
+            <h3>144x144</h3>
+            <img src="/Logos/ios/144.png" alt="144x144 icon">
+        </div>
+        <div class="icon-item">
+            <h3>152x152</h3>
+            <img src="/Logos/ios/152.png" alt="152x152 icon">
+        </div>
+        <div class="icon-item">
+            <h3>180x180</h3>
+            <img src="/Logos/ios/180.png" alt="180x180 icon">
+        </div>
+        <div class="icon-item">
+            <h3>192x192</h3>
+            <img src="/Logos/android/android-launchericon-192-192.png" alt="192x192 icon">
+        </div>
+        <div class="icon-item">
+            <h3>512x512</h3>
+            <img src="/Logos/android/android-launchericon-512-512.png" alt="512x512 icon">
+        </div>
+    </div>
+
+    <h2>🔍 PWA Status</h2>
+    <div id="pwaStatus"></div>
+
+    <script>
+        // PWA Installation Logic
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'block';
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                } else {
+                    console.log('User dismissed the install prompt');
+                }
+                deferredPrompt = null;
+                document.getElementById('installBtn').style.display = 'none';
+            }
+        });
+
+        // Check PWA Support
+        if ('serviceWorker' in navigator) {
+            document.getElementById('pwaStatus').innerHTML = '<p>✅ Service Worker supported</p>';
+        } else {
+            document.getElementById('pwaStatus').innerHTML = '<p>❌ Service Worker not supported</p>';
+        }
+
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+            document.getElementById('pwaStatus').innerHTML += '<p>✅ Running as PWA</p>';
+        } else {
+            document.getElementById('pwaStatus').innerHTML += '<p>ℹ️ Running in browser (use "Add to Home Screen" to install)</p>';
+        }
+    </script>
+</body>
+</html>

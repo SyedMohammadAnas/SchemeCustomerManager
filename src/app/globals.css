@@ -313,3 +313,43 @@
     @apply py-6;
   }
 }
+
+/* Print styles for receipt */
+@media print {
+  /* Hide all elements except the receipt content */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the receipt dialog content */
+  .receipt-print-content,
+  .receipt-print-content * {
+    visibility: visible;
+  }
+
+  /* Position the receipt content at the top of the page */
+  .receipt-print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Ensure proper page breaks */
+  .receipt-print-content {
+    page-break-inside: avoid;
+  }
+
+  /* Remove shadows and borders for clean printing */
+  .receipt-print-content * {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Ensure text is black for better printing */
+  .receipt-print-content {
+    color: black !important;
+    background: white !important;
+  }
+}

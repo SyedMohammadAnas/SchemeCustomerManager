@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<browserconfig>
+  <msapplication>
+    <tile>
+      <square70x70logo src="/Logos/android/android-launchericon-72-72.png"/>
+      <square150x150logo src="/Logos/ios/144.png"/>
+      <square310x310logo src="/Logos/android/android-launchericon-512-512.png"/>
+      <wide310x150logo src="/Logos/android/android-launchericon-512-512.png"/>
+      <TileColor>#ffffff</TileColor>
+    </tile>
+  </msapplication>
+</browserconfig>

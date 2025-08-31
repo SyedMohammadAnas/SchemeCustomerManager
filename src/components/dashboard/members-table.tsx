@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History } from "lucide-react"
+import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History, Receipt } from "lucide-react"
 import { Member, MonthTable, isWinnerOfMonth, getWinnerMonth, isWinnerStatus } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 
@@ -24,6 +24,7 @@ interface MembersTableProps {
   onEditMember: (member: Member) => void
   onDeleteMember: (memberId: number) => void
   onViewHistory: (member: Member) => void
+  onViewReceipt: (member: Member) => void
   isLoading?: boolean
   currentMonth: MonthTable // Add current month for winner highlighting
 }
@@ -105,11 +106,12 @@ const getRowStyling = (member: Member, currentMonth: MonthTable) => {
  * Mobile Member Card Component
  * Displays member information in a card format optimized for mobile devices
  */
-function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory, currentMonth }: {
+function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory, onViewReceipt, currentMonth }: {
   member: Member
   onEditMember: (member: Member) => void
   onDeleteMember: (memberId: number) => void
   onViewHistory: (member: Member) => void
+  onViewReceipt: (member: Member) => void
   currentMonth: MonthTable
 }) {
   return (
@@ -140,6 +142,17 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
             >
               <History className="h-4 w-4" />
               <span className="sr-only">View member history</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => member.payment_status === 'paid' ? onViewReceipt(member) : undefined}
+              className={`h-8 w-8 ${member.payment_status === 'paid' ? '' : 'opacity-50 cursor-not-allowed'}`}
+              title={member.payment_status === 'paid' ? 'View Receipt' : 'Receipt available after payment'}
+              disabled={member.payment_status !== 'paid'}
+            >
+              <Receipt className="h-4 w-4" />
+              <span className="sr-only">View receipt</span>
             </Button>
             <Button
               variant="ghost"
@@ -234,6 +247,7 @@ export function MembersTable({
   onEditMember,
   onDeleteMember,
   onViewHistory,
+  onViewReceipt,
   isLoading = false,
   currentMonth
 }: MembersTableProps) {
@@ -298,6 +312,7 @@ export function MembersTable({
               onEditMember={onEditMember}
               onDeleteMember={onDeleteMember}
               onViewHistory={onViewHistory}
+              onViewReceipt={onViewReceipt}
               currentMonth={currentMonth}
             />
           ))}
@@ -387,6 +402,17 @@ export function MembersTable({
                         >
                           <History className="h-4 w-4" />
                           <span className="sr-only">View member history</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => member.payment_status === 'paid' ? onViewReceipt(member) : undefined}
+                          className={`h-8 w-8 ${member.payment_status === 'paid' ? '' : 'opacity-50 cursor-not-allowed'}`}
+                          title={member.payment_status === 'paid' ? 'View Receipt' : 'Receipt available after payment'}
+                          disabled={member.payment_status !== 'paid'}
+                        >
+                          <Receipt className="h-4 w-4" />
+                          <span className="sr-only">View receipt</span>
                         </Button>
                         <Button
                           variant="ghost"

@@ -42,9 +42,8 @@ export function UnpaidMembersDialog({
   // Exclude members with 'no_payment_required' status since they don't need to pay
   const unpaidMembers = React.useMemo(() => {
     return members.filter(member =>
-      // Only show as unpaid if they have pending/overdue payment and don't have 'no_payment_required' status
-      (member.payment_status === 'pending' || member.payment_status === 'overdue') &&
-      member.payment_status !== 'no_payment_required'
+      // Only show as unpaid if they have pending/overdue payment
+      (member.payment_status === 'pending' || member.payment_status === 'overdue')
     )
   }, [members])
 

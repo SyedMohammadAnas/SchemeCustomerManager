@@ -134,15 +134,16 @@ export function MemberHistoryDialog({
 
   /**
    * Get background color for month entry
+   * Ensures proper text contrast in both light and dark modes
    */
   const getMonthBackgroundColor = (monthMember: Member | null, month: MonthTable) => {
-    if (!monthMember) return 'bg-gray-50'
+    if (!monthMember) return 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
 
-    if (isWinnerOfMonth(monthMember, month)) return 'bg-yellow-50 border-yellow-200'
-    if (isWinnerStatus(monthMember.draw_status)) return 'bg-gray-100 border-gray-300'
-    if (monthMember.payment_status === 'paid') return 'bg-green-50 border-green-200'
-    if (monthMember.payment_status === 'no_payment_required') return 'bg-blue-50 border-blue-200'
-    return 'bg-blue-50 border-blue-200'
+    if (isWinnerOfMonth(monthMember, month)) return 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-600 text-gray-900 dark:text-yellow-100'
+    if (isWinnerStatus(monthMember.draw_status)) return 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500 text-gray-900 dark:text-gray-100'
+    if (monthMember.payment_status === 'paid') return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-600 text-gray-900 dark:text-green-100'
+    if (monthMember.payment_status === 'no_payment_required') return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600 text-gray-900 dark:text-blue-100'
+    return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600 text-gray-900 dark:text-blue-100'
   }
 
   if (!member) return null
@@ -206,20 +207,20 @@ export function MemberHistoryDialog({
                     <div className="flex flex-col items-center">
                       {getStatusIcon(monthMember, month)}
                       {index < MONTHS.length - 1 && (
-                        <div className="w-px h-4 bg-gray-300 mt-1" />
+                        <div className="w-px h-4 bg-gray-300 dark:bg-gray-500 mt-1" />
                       )}
                     </div>
 
                     {/* Month details */}
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{formatMonthName(month)}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{formatMonthName(month)}</span>
                         {isCurrentMonth && (
                           <Badge variant="outline" className="text-xs">Current</Badge>
                         )}
                       </div>
 
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-gray-700 dark:text-gray-300">
                         {getStatusDescription(monthMember, month)}
                       </div>
 
@@ -236,23 +237,23 @@ export function MemberHistoryDialog({
                     </div>
 
                     {/* Status badges */}
-                    <div className="flex flex-col gap-1 items-end">
+                    <div className="flex flex-col gap-2 items-end">
                       {monthMember && (
                         <>
                           {/* Show Winner badge and trophy icon in the month they actually won */}
                           {isWinnerOfMonth(monthMember, month) && (
-                            <>
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Badge className="bg-yellow-600 text-xs">Winner</Badge>
                               <Trophy className="h-4 w-4 text-yellow-500" />
-                            </>
-                          )}
-                          {/* Show payment status ONLY for the month they won */}
-                          {isWinnerOfMonth(monthMember, month) && monthMember.payment_status === 'paid' && (
-                            <Badge className="bg-green-600 text-xs">Paid</Badge>
+                              {/* Show payment status ONLY for the month they won */}
+                              {monthMember.payment_status === 'paid' && (
+                                <Badge className="bg-green-600 text-xs">Paid</Badge>
+                              )}
+                            </div>
                           )}
                           {/* Show payment status for months where they haven't won yet */}
                           {!isWinnerStatus(monthMember.draw_status) && (
-                            <>
+                            <div className="flex items-center gap-2 flex-wrap">
                               {monthMember.payment_status === 'paid' && (
                                 <Badge className="bg-green-600 text-xs">Paid</Badge>
                               )}
@@ -262,7 +263,7 @@ export function MemberHistoryDialog({
                               {monthMember.payment_status === 'overdue' && (
                                 <Badge variant="destructive" className="text-xs">Overdue</Badge>
                               )}
-                            </>
+                            </div>
                           )}
                         </>
                       )}

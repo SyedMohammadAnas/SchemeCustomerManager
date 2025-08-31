@@ -3,9 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown, AlertCircle } from "lucide-react"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { ThemeIndicator } from "@/components/ui/theme-indicator"
+import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown, AlertCircle, ChevronDown, X } from "lucide-react"
 import { ThemeSwitch } from "@/components/ui/theme-switch"
 import { MonthSelector } from "./month-selector"
 import { MembersTable } from "./members-table"
@@ -16,9 +14,10 @@ import { MemberHistoryDialog } from "./member-history-dialog"
 import { PreviousWinnersDialog } from "./previous-winners-dialog"
 import { UnpaidMembersDialog } from "./unpaid-members-dialog"
 import { DatabaseService } from "@/lib/database"
-import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth, isWinnerStatus } from "@/lib/supabase"
+import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 /**
  * Main Dashboard Component
@@ -74,6 +73,9 @@ export function Dashboard() {
   // Search functionality state
   const [searchQuery, setSearchQuery] = React.useState('')
 
+  // Family dropdown state
+  const [selectedFamily, setSelectedFamily] = React.useState<string | null>(null)
+
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
@@ -87,7 +89,6 @@ export function Dashboard() {
   // Loading states for various operations
   const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
   const [isProceedingToNextMonth, setIsProceedingToNextMonth] = React.useState(false)
-  const [isDeclaringWinner, setIsDeclaringWinner] = React.useState(false)
 
   // Error state for user feedback
   const [error, setError] = React.useState<string | null>(null)
@@ -276,7 +277,6 @@ export function Dashboard() {
    */
   const handleDeclareWinner = async (memberId: number) => {
     try {
-      setIsDeclaringWinner(true)
       setError(null)
 
       // Double-check that no winner exists for this month
@@ -285,10 +285,8 @@ export function Dashboard() {
         return
       }
 
-      const winner = await DatabaseService.declareWinner(selectedMonth, memberId)
+      await DatabaseService.declareWinner(selectedMonth, memberId)
 
-      // Update current winner state
-      // setCurrentWinner(winner) // This line is removed as currentWinner is now computed
       // hasCurrentMonthWinner will automatically update via useMemo when members change
 
       // Reload members to get updated draw status
@@ -304,8 +302,6 @@ export function Dashboard() {
         setError('Failed to declare winner. Please try again.')
       }
       throw err // Re-throw to handle in dialog
-    } finally {
-      setIsDeclaringWinner(false)
     }
   }
 
@@ -388,26 +384,68 @@ export function Dashboard() {
   }
 
   /**
-   * Filter members based on search query
+   * Filter members based on search query and family selection
    * Searches across full name, mobile number, and family name
+   * Also filters by selected family if any
    */
   const filteredMembers = React.useMemo(() => {
-    if (!searchQuery.trim()) {
-      return members
+    let filtered = members
+
+    // First filter by family if selected
+    if (selectedFamily) {
+      filtered = filtered.filter(member => member.family === selectedFamily)
     }
 
-    const query = searchQuery.toLowerCase().trim()
-    return members.filter(member =>
-      member.full_name.toLowerCase().includes(query) ||
-      member.mobile_number.includes(query) ||
-      member.family.toLowerCase().includes(query)
-    )
-  }, [members, searchQuery])
+    // Then filter by search query if any
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(member =>
+        member.full_name.toLowerCase().includes(query) ||
+        member.mobile_number.includes(query) ||
+        member.family.toLowerCase().includes(query)
+      )
+    }
+
+    return filtered
+  }, [members, searchQuery, selectedFamily])
 
   /**
    * Check if current month is starting month for conditional features
    */
   const isStartingMonth = DatabaseService.isStartingMonth(selectedMonth)
+
+  /**
+   * Get unique families from current members
+   */
+  const uniqueFamilies = React.useMemo(() => {
+    const families = members.map(member => member.family).filter(Boolean)
+    return [...new Set(families)].sort()
+  }, [members])
+
+
+
+  /**
+   * Handle family selection from dropdown
+   */
+  const handleFamilySelect = (familyName: string) => {
+    setSelectedFamily(familyName)
+    // Clear search when family is selected
+    setSearchQuery('')
+  }
+
+  /**
+   * Clear family filter
+   */
+  const handleClearFamilyFilter = () => {
+    setSelectedFamily(null)
+  }
+
+  /**
+   * Clear search query
+   */
+  const handleClearSearch = () => {
+    setSearchQuery('')
+  }
 
   /**
    * Calculate dashboard statistics based on filtered members
@@ -426,9 +464,13 @@ export function Dashboard() {
     // Calculate effective paid members (including those who don't need to pay)
     const effectivePaidMembers = paidMembersCount + noPaymentRequiredCount
 
+    // Get unique families count
+    const uniqueFamiliesCount = uniqueFamilies.length
+
     return {
       totalMembers: members.length,
       membersWithTokens: members.filter(m => m.token_number).length,
+      uniqueFamilies: uniqueFamiliesCount,
       paidMembers: effectivePaidMembers,
       noPaymentRequired: noPaymentRequiredCount,
       pendingMembers: pendingMembersCount,
@@ -439,7 +481,7 @@ export function Dashboard() {
       // Add filtered count for search results
       filteredCount: filteredMembers.length
     }
-  }, [members, filteredMembers, currentWinner, isStartingMonth])
+  }, [members, filteredMembers, uniqueFamilies])
 
   /**
    * Check if there are eligible members for winner declaration
@@ -454,9 +496,14 @@ export function Dashboard() {
   }, [members])
 
   return (
-    <div className="container mx-auto px-4 py-4 space-y-4 sm:px-6 sm:py-6 lg:py-8">
+    <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
+      {/* Theme Switch - Top right corner for mobile, hidden on desktop */}
+      <div className="flex justify-end -mb-5 sm:hidden">
+        <ThemeSwitch />
+      </div>
+
       {/* Header Section - Mobile optimized with stacked layout */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4">
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">
             రఫీ బంగారు పొదుపు పథకం
@@ -487,9 +534,8 @@ export function Dashboard() {
             />
           </div>
 
-          {/* Theme controls */}
-          <div className="flex items-center gap-2 justify-center sm:justify-end">
-            <ThemeIndicator />
+          {/* Theme switch - Hidden on mobile, shown on desktop */}
+          <div className="hidden sm:flex justify-end">
             <ThemeSwitch />
           </div>
         </div>
@@ -503,7 +549,7 @@ export function Dashboard() {
       )}
 
       {/* Statistics Cards - Mobile-first grid layout */}
-      <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4">
         {/* Total Members Card */}
         <Card className="min-h-[80px] sm:min-h-[100px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
@@ -528,17 +574,54 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Tokens Assigned Card */}
+        {/* Families Card - Changed from Tokens Assigned */}
         <Card className="min-h-[80px] sm:min-h-[100px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 py-2 sm:px-4 sm:py-1">
-            <CardTitle className="text-xs font-medium sm:text-xl">Tokens Assigned</CardTitle>
-            <Hash className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
+            <CardTitle className="text-xs font-medium sm:text-xl">Families</CardTitle>
+            <Users className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </CardHeader>
           <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
-            <div className="text-xl font-bold sm:text-2xl">{stats.membersWithTokens}</div>
+            <div className="text-xl font-bold sm:text-2xl">{stats.uniqueFamilies}</div>
             <p className="text-xs text-muted-foreground">
-              of {stats.totalMembers} members
+              total families
             </p>
+            {/* Family Dropdown Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full mt-7 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 h-8 text-xs"
+                  size="sm"
+                >
+                  <Users className="mr-1 h-3 w-3" />
+                  {selectedFamily ? `Viewing: ${selectedFamily}` : 'View Families'}
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 max-h-60 overflow-y-auto">
+                {uniqueFamilies.length > 0 ? (
+                  uniqueFamilies.map((family) => (
+                    <DropdownMenuItem
+                      key={family}
+                      onClick={() => handleFamilySelect(family)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{family}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {members.filter(m => m.family === family).length} member{members.filter(m => m.family === family).length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    <span className="text-muted-foreground">No families found</span>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
           </CardContent>
         </Card>
 
@@ -622,7 +705,7 @@ export function Dashboard() {
       </div>
 
       {/* Action Buttons and Search Bar - Mobile optimized with responsive layout */}
-      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4 mt-4">
         {/* Show Add Member and Assign Tokens only for starting month */}
         {isStartingMonth && (
           <>
@@ -662,27 +745,55 @@ export function Dashboard() {
           </Button>
         )}
 
-        {/* Search Bar - Positioned alongside action buttons */}
-        <div className="relative w-full sm:w-auto sm:ml-auto">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search by name, mobile number, or family..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 w-full sm:w-64"
-          />
-          {/* Search results count indicator */}
-          {searchQuery.trim() && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
-              {stats.filteredCount} of {stats.totalMembers}
-            </div>
+        {/* Search Bar and Clear Family Filter - Positioned together */}
+        <div className="flex flex-row items-center space-x-2 w-full sm:w-auto sm:ml-auto">
+          {/* Search Bar */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by name, mobile number, or family..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 w-full"
+            />
+            {/* Clear Search Button - Inside the search field */}
+            {searchQuery.trim() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearSearch}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+            {/* Search results count indicator */}
+            {searchQuery.trim() && (
+              <div className="absolute right-8 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+                {stats.filteredCount} of {stats.totalMembers}
+              </div>
+            )}
+          </div>
+
+          {/* Clear Family Filter Button - Beside search bar */}
+          {selectedFamily && (
+            <Button
+              variant="outline"
+              onClick={handleClearFamilyFilter}
+              className="bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700 h-10 text-xs whitespace-nowrap"
+              size="sm"
+            >
+              <X className="mr-1 h-3 w-3" />
+              Clear Family Filter: {selectedFamily}
+            </Button>
           )}
         </div>
       </div>
 
       {/* Members Table - Mobile optimized with filtered data */}
-      <MembersTable
+      <div className="mt-4">
+        <MembersTable
         members={filteredMembers}
         onEditMember={handleEditMember}
         onDeleteMember={handleDeleteMember}
@@ -744,6 +855,7 @@ export function Dashboard() {
         onPaymentStatusChange={handlePaymentStatusChange}
         onPaidToChange={handlePaidToChange}
       />
+    </div>
     </div>
   )
 }

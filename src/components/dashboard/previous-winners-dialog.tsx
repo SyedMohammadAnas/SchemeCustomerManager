@@ -57,8 +57,12 @@ export function PreviousWinnersDialog({ open, onOpenChange }: PreviousWinnersDia
         monthName: string
       }> = []
 
-      // Iterate through all months to find winners
-      for (const month of MONTHS) {
+      // Only check months that are likely to exist to avoid 406 errors
+      // For now, only check the first few months that we know exist
+      const monthsToCheck = ['september_2025', 'october_2025', 'november_2025'] as MonthTable[]
+
+      // Iterate through existing months to find winners
+      for (const month of monthsToCheck) {
         try {
           const winner = await DatabaseService.getCurrentWinner(month)
           if (winner) {

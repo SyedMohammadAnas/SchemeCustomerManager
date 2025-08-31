@@ -2,7 +2,7 @@ import { Dashboard } from "@/components/dashboard/dashboard"
 
 /**
  * Main Application Page
- * Renders the complete scheme register dashboard
+ * Renders the complete RAFI Gold Saving Scheme dashboard
  */
 export default function Home() {
   return (

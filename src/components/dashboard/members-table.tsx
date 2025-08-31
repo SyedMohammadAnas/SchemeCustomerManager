@@ -85,6 +85,7 @@ const getDrawStatusBadge = (status: Member['draw_status'], member: Member, curre
 /**
  * Get row styling based on member status
  * Highlights current month winners and gives purple outline to previously drawn members
+ * Ensures proper text contrast in both light and dark modes
  */
 const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
   // A member is the current month winner if they won in the currently selected month
@@ -93,10 +94,10 @@ const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<
   const isDrawn = member.draw_status === 'drawn';
 
   if (isCurrentMonthWinner) {
-    return 'bg-yellow-50 border-yellow-200 border-2' // Current month winner - bright yellow
+    return 'bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-600 border-2 text-gray-900 dark:text-yellow-100' // Current month winner - bright yellow with proper contrast
   }
   if (isDrawn) {
-    return 'bg-purple-50 border-purple-300 border-2' // Previous winner - purple outline
+    return 'bg-purple-100 dark:bg-purple-900 border-purple-300 dark:border-purple-600 border-2 text-gray-900 dark:text-purple-100' // Previous winner - purple outline with proper contrast
   }
   return ''
 }
@@ -167,7 +168,7 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
             <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{member.full_name}</span>
+            <span className="font-medium text-inherit">{member.full_name}</span>
           </div>
         </div>
 
@@ -175,7 +176,7 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
             <Phone className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">{formatPhoneNumber(member.mobile_number)}</span>
+            <span className="text-sm text-inherit">{formatPhoneNumber(member.mobile_number)}</span>
           </div>
         </div>
 
@@ -352,11 +353,11 @@ export function MembersTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{member.full_name}</TableCell>
-                    <TableCell>{formatPhoneNumber(member.mobile_number)}</TableCell>
+                    <TableCell className="font-medium [&>*]:text-inherit">{member.full_name}</TableCell>
+                    <TableCell className="[&>*]:text-inherit">{formatPhoneNumber(member.mobile_number)}</TableCell>
                     <TableCell>
                       {member.family === 'Individual' ? (
-                        <span className="text-sm text-muted-foreground">{member.family}</span>
+                        <span className="text-sm text-muted-foreground dark:text-gray-300">{member.family}</span>
                       ) : (
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                           {member.family}
@@ -379,7 +380,7 @@ export function MembersTable({
                     <TableCell>{getDrawStatusBadge(member.draw_status, member, currentMonth, allWinners)}</TableCell>
                     <TableCell className="max-w-[200px]">
                       {member.additional_information && (
-                        <div className="truncate text-sm text-muted-foreground" title={member.additional_information}>
+                        <div className="truncate text-sm text-muted-foreground dark:text-gray-300" title={member.additional_information}>
                           {member.additional_information}
                         </div>
                       )}

@@ -390,8 +390,12 @@ export class DatabaseService {
     try {
       const history: Record<MonthTable, Member | null> = {} as Record<MonthTable, Member | null>
 
+      // Only check months that are likely to exist to avoid 406 errors
+      // For now, only check the first few months that we know exist
+      const monthsToCheck = ['september_2025', 'october_2025', 'november_2025'] as MonthTable[]
+
       // Check each month for this member
-      for (const month of MONTHS) {
+      for (const month of monthsToCheck) {
         try {
           const { data, error } = await supabase
             .from(month)
@@ -411,8 +415,16 @@ export class DatabaseService {
           } else {
             history[month] = data
           }
-        } catch {
+        } catch (err) {
           // Handle any other errors by setting to null
+          console.warn(`Skipping month ${month} due to error:`, err)
+          history[month] = null
+        }
+      }
+
+      // Set all other months to null since they don't exist yet
+      for (const month of MONTHS) {
+        if (!monthsToCheck.includes(month)) {
           history[month] = null
         }
       }
@@ -503,8 +515,12 @@ export class DatabaseService {
     try {
       const winners: Record<MonthTable, Member | null> = {} as Record<MonthTable, Member | null>
 
+      // Only check months that are likely to exist to avoid 406 errors
+      // For now, only check the first few months that we know exist
+      const monthsToCheck = ['september_2025', 'october_2025', 'november_2025'] as MonthTable[]
+
       // Check each month for a winner
-      for (const month of MONTHS) {
+      for (const month of monthsToCheck) {
         try {
           const { data, error } = await supabase
             .from(month)
@@ -525,6 +541,13 @@ export class DatabaseService {
           }
         } catch {
           // Handle any other errors by setting to null
+          winners[month] = null
+        }
+      }
+
+      // Set all other months to null since they don't exist yet
+      for (const month of MONTHS) {
+        if (!monthsToCheck.includes(month)) {
           winners[month] = null
         }
       }

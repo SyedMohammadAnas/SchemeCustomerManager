@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History } from "lucide-react"
-import { Member, isWinnerOfMonth, getWinnerMonth, formatMonthName, isWinnerStatus } from "@/lib/supabase"
+import { Member, MonthTable, isWinnerOfMonth, getWinnerMonth, isWinnerStatus } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 
 /**
@@ -25,8 +25,7 @@ interface MembersTableProps {
   onDeleteMember: (memberId: number) => void
   onViewHistory: (member: Member) => void
   isLoading?: boolean
-  currentMonth: string // Add current month for winner highlighting
-  allWinners: Record<string, Member | null> // Add all winners for context
+  currentMonth: MonthTable // Add current month for winner highlighting
 }
 
 /**
@@ -35,7 +34,7 @@ interface MembersTableProps {
  * Shows actual payment status in current month table
  * Handles 'no_payment_required' for previous winners
  */
-const getPaymentStatusBadge = (status: Member['payment_status'], member: Member) => {
+const getPaymentStatusBadge = (status: Member['payment_status']) => {
   // Show actual payment status in the current month table
   switch (status) {
     case 'paid':
@@ -55,9 +54,9 @@ const getPaymentStatusBadge = (status: Member['payment_status'], member: Member)
  * Badge variant mapping for draw status
  * Visual indicators for different draw states
  */
-const getDrawStatusBadge = (status: Member['draw_status'], member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
+const getDrawStatusBadge = (status: Member['draw_status'], member: Member, currentMonth: MonthTable) => {
   // A member is the current month winner if they won in the currently selected month
-  const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth as any);
+  const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth);
 
   switch (status) {
     case 'winner':
@@ -72,7 +71,7 @@ const getDrawStatusBadge = (status: Member['draw_status'], member: Member, curre
       return <Badge variant="secondary">Not Drawn</Badge>
     default:
       // Handle month-specific winner statuses
-      if (isWinnerOfMonth(member, currentMonth as any)) {
+      if (isWinnerOfMonth(member, currentMonth)) {
         return <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600">Winner</Badge>
       } else if (getWinnerMonth(member.draw_status)) {
         return <Badge variant="outline" className="bg-gray-100 text-gray-600">Winner</Badge>
@@ -87,9 +86,9 @@ const getDrawStatusBadge = (status: Member['draw_status'], member: Member, curre
  * Highlights current month winners and gives purple outline to previously drawn members
  * Ensures proper text contrast in both light and dark modes
  */
-const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
+const getRowStyling = (member: Member, currentMonth: MonthTable) => {
   // A member is the current month winner if they won in the currently selected month
-  const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth as any);
+  const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth);
   // A member is drawn if they were previously a winner but not in the current month
   const isDrawn = member.draw_status === 'drawn';
 
@@ -106,16 +105,15 @@ const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<
  * Mobile Member Card Component
  * Displays member information in a card format optimized for mobile devices
  */
-function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory, currentMonth, allWinners }: {
+function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory, currentMonth }: {
   member: Member
   onEditMember: (member: Member) => void
   onDeleteMember: (memberId: number) => void
   onViewHistory: (member: Member) => void
-  currentMonth: string
-  allWinners: Record<string, Member | null>
+  currentMonth: MonthTable
 }) {
   return (
-    <Card className={`mb-4 ${getRowStyling(member, currentMonth, allWinners)}`}>
+    <Card className={`mb-4 ${getRowStyling(member, currentMonth)}`}>
       <CardContent className="p-4 space-y-3">
         {/* Header with Token */}
         <div className="flex items-center justify-between">
@@ -196,8 +194,8 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
 
         {/* Status Badges */}
         <div className="flex flex-wrap gap-2">
-          {getPaymentStatusBadge(member.payment_status, member)}
-          {getDrawStatusBadge(member.draw_status, member, currentMonth, allWinners)}
+          {getPaymentStatusBadge(member.payment_status)}
+          {getDrawStatusBadge(member.draw_status, member, currentMonth)}
         </div>
 
         {/* Payment Information */}
@@ -237,8 +235,7 @@ export function MembersTable({
   onDeleteMember,
   onViewHistory,
   isLoading = false,
-  currentMonth,
-  allWinners
+  currentMonth
 }: MembersTableProps) {
   // Loading state
   if (isLoading) {
@@ -302,7 +299,6 @@ export function MembersTable({
               onDeleteMember={onDeleteMember}
               onViewHistory={onViewHistory}
               currentMonth={currentMonth}
-              allWinners={allWinners}
             />
           ))}
         </div>
@@ -325,12 +321,7 @@ export function MembersTable({
             </TableHeader>
             <TableBody>
               {members.map((member) => {
-                // A member is the current month winner if they won in the currently selected month
-                const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth as any);
-                // A member is drawn if they were previously a winner but not in the current month
-                const isDrawn = member.draw_status === 'drawn';
-
-                let rowClass = getRowStyling(member, currentMonth, allWinners);
+                const rowClass = getRowStyling(member, currentMonth);
                 // The getRowStyling function already handles all the styling logic
                 // No need to add additional classes here
 
@@ -364,7 +355,7 @@ export function MembersTable({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{getPaymentStatusBadge(member.payment_status, member)}</TableCell>
+                    <TableCell>{getPaymentStatusBadge(member.payment_status)}</TableCell>
                     <TableCell>
                       {member.paid_to && (
                         <Badge variant="outline" className="text-xs">
@@ -377,7 +368,7 @@ export function MembersTable({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{getDrawStatusBadge(member.draw_status, member, currentMonth, allWinners)}</TableCell>
+                    <TableCell>{getDrawStatusBadge(member.draw_status, member, currentMonth)}</TableCell>
                     <TableCell className="max-w-[200px]">
                       {member.additional_information && (
                         <div className="truncate text-sm text-muted-foreground dark:text-gray-300" title={member.additional_information}>

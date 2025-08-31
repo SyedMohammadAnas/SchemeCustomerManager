@@ -461,7 +461,7 @@ export function Dashboard() {
     const pendingMembersCount = members.filter(m => m.payment_status === 'pending').length
     const overdueMembersCount = members.filter(m => m.payment_status === 'overdue').length
 
-    // Calculate effective paid members (including those who don't need to pay)
+    // Calculate effective paid members (including those who do not need to pay)
     const effectivePaidMembers = paidMembersCount + noPaymentRequiredCount
 
     // Get unique families count
@@ -800,7 +800,6 @@ export function Dashboard() {
         onViewHistory={handleViewMemberHistory}
         isLoading={isLoading}
         currentMonth={selectedMonth}
-        allWinners={allWinners}
       />
 
       {/* Add Member Dialog - Only shown for starting month */}

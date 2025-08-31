@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/lib/theme";
-import { Sun, Moon, Monitor, Palette, Eye, EyeOff } from "lucide-react";
+import { Sun, Moon, Palette, Eye, EyeOff } from "lucide-react";
 
 /**
  * Theme Demo Page

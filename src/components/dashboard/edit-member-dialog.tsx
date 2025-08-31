@@ -342,7 +342,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               {/* Show note for previously won customers */}
               {(isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required') && (
                 <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
-                  <strong>Note:</strong> This member has won previously and doesn't need to worry about payment. Payment fields are disabled.
+                  <strong>Note:</strong> This member has won previously and does not need to worry about payment. Payment fields are disabled.
                 </p>
               )}
             </div>

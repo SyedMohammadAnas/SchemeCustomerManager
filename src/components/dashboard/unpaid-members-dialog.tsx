@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Member, isWinnerStatus, PaymentStatus, PaidToRecipient } from "@/lib/supabase"
+import { Member, PaymentStatus } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { User, Users, AlertCircle } from "lucide-react"
 

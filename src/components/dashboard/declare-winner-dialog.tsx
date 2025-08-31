@@ -22,6 +22,7 @@ interface DeclareWinnerDialogProps {
   onDeclareWinner: (memberId: number) => Promise<void>
   members: Member[]
   isLoading: boolean
+  hasCurrentMonthWinner: boolean // Add this prop to check if winner already exists
 }
 
 /**
@@ -34,7 +35,8 @@ export function DeclareWinnerDialog({
   onOpenChange,
   onDeclareWinner,
   members,
-  isLoading
+  isLoading,
+  hasCurrentMonthWinner
 }: DeclareWinnerDialogProps) {
   // Selected member state
   const [selectedMemberId, setSelectedMemberId] = React.useState<string>('')
@@ -100,61 +102,72 @@ export function DeclareWinnerDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Eligible members count */}
-          <div className="text-sm text-muted-foreground">
-            {eligibleMembers.length} eligible member(s) available
-          </div>
-
-          {/* Member selection */}
-          {eligibleMembers.length > 0 ? (
-            <div className="space-y-2">
-              <Label htmlFor="member-select">Select Winner</Label>
-              <Select
-                value={selectedMemberId}
-                onValueChange={setSelectedMemberId}
-                disabled={isLoading || isSubmitting}
-              >
-                <SelectTrigger id="member-select">
-                  <SelectValue placeholder="Choose a member..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleMembers.map((member) => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <div className="flex-1">
-                          <div className="font-medium">{member.full_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Token {formatTokenDisplay(member.token_number)} • {member.family}
-                          </div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Check if winner already exists */}
+          {hasCurrentMonthWinner ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Trophy className="h-12 w-12 mx-auto mb-2 text-yellow-500" />
+              <p className="text-lg font-medium text-yellow-700">Winner Already Declared</p>
+              <p className="text-sm">A winner has already been declared for this month.</p>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Trophy className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No eligible members found</p>
-              <p className="text-sm">Members must be paid and have token numbers to be eligible</p>
-            </div>
-          )}
+            <>
+              {/* Eligible members count */}
+              <div className="text-sm text-muted-foreground">
+                {eligibleMembers.length} eligible member(s) available
+              </div>
 
-          {/* Selected member confirmation */}
-          {selectedMember && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <div className="flex items-center gap-2 text-yellow-800">
-                <Trophy className="h-4 w-4" />
-                <span className="font-medium">Selected Winner</span>
-              </div>
-              <div className="mt-1 text-sm text-yellow-700">
-                <div><strong>{selectedMember.full_name}</strong></div>
-                <div>Token {formatTokenDisplay(selectedMember.token_number)} • {selectedMember.family}</div>
-                <div>Mobile: {selectedMember.mobile_number}</div>
-              </div>
-            </div>
+              {/* Member selection */}
+              {eligibleMembers.length > 0 ? (
+                <div className="space-y-2">
+                  <Label htmlFor="member-select">Select Winner</Label>
+                  <Select
+                    value={selectedMemberId}
+                    onValueChange={setSelectedMemberId}
+                    disabled={isLoading || isSubmitting}
+                  >
+                    <SelectTrigger id="member-select">
+                      <SelectValue placeholder="Choose a member..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <div className="flex-1">
+                              <div className="font-medium">{member.full_name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Token {formatTokenDisplay(member.token_number)} • {member.family}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Trophy className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No eligible members found</p>
+                  <p className="text-sm">Members must be paid and have token numbers to be eligible</p>
+                </div>
+              )}
+
+              {/* Selected member confirmation */}
+              {selectedMember && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-center gap-2 text-yellow-800">
+                    <Trophy className="h-4 w-4" />
+                    <span className="font-medium">Selected Winner</span>
+                  </div>
+                  <div className="mt-1 text-sm text-yellow-700">
+                    <div><strong>{selectedMember.full_name}</strong></div>
+                    <div>Token {formatTokenDisplay(selectedMember.token_number)} • {selectedMember.family}</div>
+                    <div>Mobile: {selectedMember.mobile_number}</div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -164,15 +177,18 @@ export function DeclareWinnerDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            {hasCurrentMonthWinner ? 'Close' : 'Cancel'}
           </Button>
-          <Button
-            onClick={handleDeclareWinner}
-            disabled={!selectedMemberId || isSubmitting || eligibleMembers.length === 0}
-            className="bg-yellow-600 hover:bg-yellow-700"
-          >
-            {isSubmitting ? 'Declaring Winner...' : 'Declare Winner'}
-          </Button>
+          {/* Only show declare winner button when no winner exists and there are eligible members */}
+          {!hasCurrentMonthWinner && eligibleMembers.length > 0 && (
+            <Button
+              onClick={handleDeclareWinner}
+              disabled={!selectedMemberId || isSubmitting}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {isSubmitting ? 'Declaring Winner...' : 'Declare Winner'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

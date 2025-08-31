@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History } from "lucide-react"
-import { Member } from "@/lib/supabase"
+import { Member, isWinnerOfMonth, getWinnerMonth, formatMonthName, isWinnerStatus } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 
 /**
@@ -25,6 +25,8 @@ interface MembersTableProps {
   onDeleteMember: (memberId: number) => void
   onViewHistory: (member: Member) => void
   isLoading?: boolean
+  currentMonth: string // Add current month for winner highlighting
+  allWinners: Record<string, Member | null> // Add all winners for context
 }
 
 /**
@@ -48,16 +50,30 @@ const getPaymentStatusBadge = (status: Member['payment_status']) => {
  * Badge variant mapping for draw status
  * Visual indicators for different draw states
  */
-const getDrawStatusBadge = (status: Member['draw_status']) => {
+const getDrawStatusBadge = (status: Member['draw_status'], member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
+  // A member is the current month winner if they won in the currently selected month
+  const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth as any);
+
   switch (status) {
     case 'winner':
-      return <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600">Winner</Badge>
+      if (isCurrentMonthWinner) {
+        return <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600">Winner</Badge>
+      } else {
+        return <Badge variant="outline" className="bg-gray-100 text-gray-600">Winner</Badge>
+      }
     case 'drawn':
       return <Badge variant="outline" className="bg-gray-100 text-gray-600">Previously Won</Badge>
     case 'not_drawn':
       return <Badge variant="secondary">Not Drawn</Badge>
     default:
-      return <Badge variant="outline">Unknown</Badge>
+      // Handle month-specific winner statuses
+      if (isWinnerOfMonth(member, currentMonth as any)) {
+        return <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600">Winner</Badge>
+      } else if (getWinnerMonth(member.draw_status)) {
+        return <Badge variant="outline" className="bg-gray-100 text-gray-600">Winner</Badge>
+      } else {
+        return <Badge variant="outline">Unknown</Badge>
+      }
   }
 }
 
@@ -65,11 +81,16 @@ const getDrawStatusBadge = (status: Member['draw_status']) => {
  * Get row styling based on member status
  * Highlights winners and dims previously drawn members
  */
-const getRowStyling = (member: Member) => {
-  if (member.draw_status === 'winner') {
+const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
+  // A member is the current month winner if they won in the currently selected month
+  const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth as any);
+  // A member is drawn if they were previously a winner but not in the current month
+  const isDrawn = member.draw_status === 'drawn';
+
+  if (isCurrentMonthWinner) {
     return 'bg-yellow-50 border-yellow-200 border-2'
   }
-  if (member.draw_status === 'drawn') {
+  if (isDrawn) {
     return 'bg-gray-50 opacity-75'
   }
   return ''
@@ -79,14 +100,16 @@ const getRowStyling = (member: Member) => {
  * Mobile Member Card Component
  * Displays member information in a card format optimized for mobile devices
  */
-function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory }: {
+function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory, currentMonth, allWinners }: {
   member: Member
   onEditMember: (member: Member) => void
   onDeleteMember: (memberId: number) => void
   onViewHistory: (member: Member) => void
+  currentMonth: string
+  allWinners: Record<string, Member | null>
 }) {
   return (
-    <Card className={`mb-4 ${getRowStyling(member)}`}>
+    <Card className={`mb-4 ${getRowStyling(member, currentMonth, allWinners)}`}>
       <CardContent className="p-4 space-y-3">
         {/* Header with Token */}
         <div className="flex items-center justify-between">
@@ -97,6 +120,9 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory 
               </Badge>
             )}
             {member.draw_status === 'winner' && (
+              <Trophy className="h-4 w-4 text-yellow-500" />
+            )}
+            {(member.draw_status !== 'winner' && isWinnerStatus(member.draw_status)) && (
               <Trophy className="h-4 w-4 text-yellow-500" />
             )}
           </div>
@@ -165,7 +191,7 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory 
         {/* Status Badges */}
         <div className="flex flex-wrap gap-2">
           {getPaymentStatusBadge(member.payment_status)}
-          {getDrawStatusBadge(member.draw_status)}
+          {getDrawStatusBadge(member.draw_status, member, currentMonth, allWinners)}
         </div>
 
         {/* Payment Information */}
@@ -199,7 +225,9 @@ export function MembersTable({
   onEditMember,
   onDeleteMember,
   onViewHistory,
-  isLoading = false
+  isLoading = false,
+  currentMonth,
+  allWinners
 }: MembersTableProps) {
   // Loading state
   if (isLoading) {
@@ -262,6 +290,8 @@ export function MembersTable({
               onEditMember={onEditMember}
               onDeleteMember={onDeleteMember}
               onViewHistory={onViewHistory}
+              currentMonth={currentMonth}
+              allWinners={allWinners}
             />
           ))}
         </div>
@@ -283,86 +313,100 @@ export function MembersTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.map((member) => (
-                <TableRow
-                  key={member.id}
-                  className={getRowStyling(member)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {member.token_number ? (
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {formatTokenDisplay(member.token_number)}
-                        </Badge>
-                      ) : (
-                        <Hash className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {member.draw_status === 'winner' && (
-                        <Trophy className="h-4 w-4 text-yellow-500" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{member.full_name}</TableCell>
-                  <TableCell>{formatPhoneNumber(member.mobile_number)}</TableCell>
-                  <TableCell>
-                    {member.family === 'Individual' ? (
-                      <span className="text-sm text-muted-foreground">{member.family}</span>
-                    ) : (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                        {member.family}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{getPaymentStatusBadge(member.payment_status)}</TableCell>
-                  <TableCell>
-                    {member.paid_to && (
-                      <Badge variant="outline" className="text-xs">
-                        {member.paid_to}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{getDrawStatusBadge(member.draw_status)}</TableCell>
-                  <TableCell className="max-w-[200px]">
-                    {member.additional_information && (
-                      <div className="truncate text-sm text-muted-foreground" title={member.additional_information}>
-                        {member.additional_information}
+              {members.map((member) => {
+                // A member is the current month winner if they won in the currently selected month
+                const isCurrentMonthWinner = isWinnerOfMonth(member, currentMonth as any);
+                // A member is drawn if they were previously a winner but not in the current month
+                const isDrawn = member.draw_status === 'drawn';
+
+                let rowClass = getRowStyling(member, currentMonth, allWinners);
+                if (isCurrentMonthWinner) {
+                  rowClass += ' bg-yellow-50 border-yellow-200 border-2'; // Highlight current month winner
+                } else if (isDrawn) {
+                  rowClass += ' bg-gray-50 opacity-75'; // Dim previously drawn
+                }
+
+                return (
+                  <TableRow
+                    key={member.id}
+                    className={rowClass}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {member.token_number ? (
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {formatTokenDisplay(member.token_number)}
+                          </Badge>
+                        ) : (
+                          <Hash className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        {(member.draw_status === 'winner' || isWinnerStatus(member.draw_status)) && (
+                          <Trophy className="h-4 w-4 text-yellow-500" />
+                        )}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onViewHistory(member)}
-                        className="h-8 w-8"
-                        title="View History"
-                      >
-                        <History className="h-4 w-4" />
-                        <span className="sr-only">View member history</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEditMember(member)}
-                        className="h-8 w-8"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                        <span className="sr-only">Edit member</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDeleteMember(member.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete member</span>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="font-medium">{member.full_name}</TableCell>
+                    <TableCell>{formatPhoneNumber(member.mobile_number)}</TableCell>
+                    <TableCell>
+                      {member.family === 'Individual' ? (
+                        <span className="text-sm text-muted-foreground">{member.family}</span>
+                      ) : (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                          {member.family}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{getPaymentStatusBadge(member.payment_status)}</TableCell>
+                    <TableCell>
+                      {member.paid_to && (
+                        <Badge variant="outline" className="text-xs">
+                          {member.paid_to}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{getDrawStatusBadge(member.draw_status, member, currentMonth, allWinners)}</TableCell>
+                    <TableCell className="max-w-[200px]">
+                      {member.additional_information && (
+                        <div className="truncate text-sm text-muted-foreground" title={member.additional_information}>
+                          {member.additional_information}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onViewHistory(member)}
+                          className="h-8 w-8"
+                          title="View History"
+                        >
+                          <History className="h-4 w-4" />
+                          <span className="sr-only">View member history</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEditMember(member)}
+                          className="h-8 w-8"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                          <span className="sr-only">Edit member</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDeleteMember(member.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete member</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

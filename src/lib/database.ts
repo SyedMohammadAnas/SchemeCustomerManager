@@ -1,4 +1,4 @@
-import { supabase, Member, NewMember, MonthTable, MONTHS } from './supabase'
+import { supabase, Member, NewMember, MonthTable, MONTHS, createWinnerDrawStatus, isWinnerStatus, getWinnerMonth } from './supabase'
 
 
 /**
@@ -204,12 +204,20 @@ export class DatabaseService {
 
   /**
    * Declare a winner for the current month
-   * Updates the member's draw_status to 'winner'
+   * Updates the member's draw_status to month-specific winner status
+   * Prevents multiple winner declarations per month
    */
   static async declareWinner(monthTable: MonthTable, memberId: number): Promise<Member> {
     try {
+      // Check if a winner already exists for this month
+      const existingWinner = await this.getCurrentWinner(monthTable)
+      if (existingWinner) {
+        throw new Error(`A winner has already been declared for ${formatMonthName(monthTable)}`)
+      }
+
+      // Update the member to be the winner with month-specific status
       const updatedMember = await this.updateMember(monthTable, memberId, {
-        draw_status: 'winner'
+        draw_status: createWinnerDrawStatus(monthTable)
       })
       return updatedMember
     } catch (error) {
@@ -227,7 +235,7 @@ export class DatabaseService {
       const { data, error } = await supabase
         .from(monthTable)
         .select('*')
-        .eq('draw_status', 'winner')
+        .eq('draw_status', createWinnerDrawStatus(monthTable))
         .single()
 
       if (error) {
@@ -302,12 +310,8 @@ export class DatabaseService {
         throw new Error(`Failed to copy members to next month: ${error.message}`)
       }
 
-      // Update current month's winner status to 'drawn' if exists
-      if (currentWinner) {
-        await this.updateMember(currentMonth, currentWinner.id, {
-          draw_status: 'drawn'
-        })
-      }
+      // Don't change the current month's winner status - they should remain as winner in their original month
+      // The winner is only marked as 'drawn' when copied to the next month
 
       return nextMonth
     } catch (error) {
@@ -426,6 +430,61 @@ export class DatabaseService {
     } catch (error) {
       console.error('Database error in getExistingFamilyNames:', error)
       throw error
+    }
+  }
+
+  /**
+   * Get all winners across all months
+   * Returns a map of month to winner information
+   */
+  static async getAllWinners(): Promise<Record<MonthTable, Member | null>> {
+    try {
+      const winners: Record<MonthTable, Member | null> = {} as Record<MonthTable, Member | null>
+
+      // Check each month for a winner
+      for (const month of MONTHS) {
+        try {
+          const { data, error } = await supabase
+            .from(month)
+            .select('*')
+            .eq('draw_status', createWinnerDrawStatus(month))
+            .single()
+
+          if (error) {
+            // No winner found in this month
+            if (error.code === 'PGRST116') {
+              winners[month] = null
+            } else {
+              console.error(`Error fetching winner from ${month}:`, error)
+              winners[month] = null
+            }
+          } else {
+            winners[month] = data
+          }
+        } catch {
+          // Handle any other errors by setting to null
+          winners[month] = null
+        }
+      }
+
+      return winners
+    } catch (error) {
+      console.error('Database error in getAllWinners:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Check if a month already has a winner declared
+   * Used to determine if declare winner button should be shown
+   */
+  static async hasWinner(monthTable: MonthTable): Promise<boolean> {
+    try {
+      const winner = await this.getCurrentWinner(monthTable)
+      return winner !== null
+    } catch (error) {
+      console.error('Database error in hasWinner:', error)
+      return false
     }
   }
 }

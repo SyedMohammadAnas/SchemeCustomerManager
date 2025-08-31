@@ -16,7 +16,7 @@ import { MemberHistoryDialog } from "./member-history-dialog"
 import { PreviousWinnersDialog } from "./previous-winners-dialog"
 import { UnpaidMembersDialog } from "./unpaid-members-dialog"
 import { DatabaseService } from "@/lib/database"
-import { Member, NewMember, MonthTable, formatMonthName } from "@/lib/supabase"
+import { Member, NewMember, MonthTable, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 
@@ -35,8 +35,38 @@ export function Dashboard() {
   const [members, setMembers] = React.useState<Member[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
-  // Current month winner state
-  const [currentWinner, setCurrentWinner] = React.useState<Member | null>(null)
+  // Current month winner state - computed from members
+  const currentWinner = React.useMemo(() => {
+    const winner = members.find(member =>
+      isWinnerOfMonth(member, selectedMonth)
+    );
+    console.log('Current winner computed:', {
+      selectedMonth,
+      winner,
+      membersWithWinnerStatus: members.filter(m => isWinnerOfMonth(m, selectedMonth)),
+      allMembers: members.map(m => ({ name: m.full_name, draw_status: m.draw_status }))
+    });
+    return winner;
+  }, [members, selectedMonth]);
+
+  // All winners across all months for tracking and display
+  const [allWinners, setAllWinners] = React.useState<Record<MonthTable, Member | null>>({} as Record<MonthTable, Member | null>)
+
+  /**
+   * Check if current month already has a winner
+   * Used to determine if declare winner button should be shown
+   */
+  const hasCurrentMonthWinner = React.useMemo(() => {
+    const hasWinner = members.some(member =>
+      isWinnerOfMonth(member, selectedMonth)
+    );
+    console.log('Has current month winner computed:', {
+      selectedMonth,
+      hasWinner,
+      membersWithWinnerStatus: members.filter(m => isWinnerOfMonth(m, selectedMonth))
+    });
+    return hasWinner;
+  }, [members, selectedMonth]);
 
   // Family suggestions for the selected month
   const [familySuggestions, setFamilySuggestions] = React.useState<string[]>([])
@@ -57,6 +87,7 @@ export function Dashboard() {
   // Loading states for various operations
   const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
   const [isProceedingToNextMonth, setIsProceedingToNextMonth] = React.useState(false)
+  const [isDeclaringWinner, setIsDeclaringWinner] = React.useState(false)
 
   // Error state for user feedback
   const [error, setError] = React.useState<string | null>(null)
@@ -70,14 +101,15 @@ export function Dashboard() {
       setIsLoading(true)
       setError(null)
 
-      // Load members and winner in parallel
-      const [data, winner] = await Promise.all([
+      // Load members and all winners in parallel
+      const [data, allWinnersData] = await Promise.all([
         DatabaseService.getMembers(selectedMonth),
-        DatabaseService.getCurrentWinner(selectedMonth)
+        DatabaseService.getAllWinners()
       ])
 
       setMembers(data)
-      setCurrentWinner(winner)
+      // currentWinner is now computed from members
+      setAllWinners(allWinnersData)
 
       // Load family suggestions
       const families = await DatabaseService.getExistingFamilyNames(selectedMonth)
@@ -90,12 +122,41 @@ export function Dashboard() {
     }
   }, [selectedMonth])
 
+  // Check if next month already has data
+  const [nextMonthHasData, setNextMonthHasData] = React.useState(false)
+
+  /**
+   * Check if next month has data to determine if proceed button should be shown
+   */
+  const checkNextMonthData = React.useCallback(async () => {
+    try {
+      const nextMonth = DatabaseService.getNextMonth(selectedMonth);
+      if (nextMonth) {
+        const nextMonthMembers = await DatabaseService.getMembers(nextMonth);
+        setNextMonthHasData(nextMonthMembers.length > 0);
+      } else {
+        setNextMonthHasData(false);
+      }
+    } catch (error) {
+      console.error('Error checking next month data:', error);
+      setNextMonthHasData(false);
+    }
+  }, [selectedMonth]);
+
   /**
    * Load members when component mounts or month changes
    */
   React.useEffect(() => {
     loadMembers()
-  }, [loadMembers])
+    checkNextMonthData()
+  }, [loadMembers, checkNextMonthData])
+
+  /**
+   * Check next month data when selected month changes
+   */
+  React.useEffect(() => {
+    checkNextMonthData()
+  }, [selectedMonth, checkNextMonthData])
 
   /**
    * Handle month selection change
@@ -215,18 +276,36 @@ export function Dashboard() {
    */
   const handleDeclareWinner = async (memberId: number) => {
     try {
+      setIsDeclaringWinner(true)
       setError(null)
+
+      // Double-check that no winner exists for this month
+      if (hasCurrentMonthWinner) {
+        setError('A winner has already been declared for this month.')
+        return
+      }
+
       const winner = await DatabaseService.declareWinner(selectedMonth, memberId)
 
       // Update current winner state
-      setCurrentWinner(winner)
+      // setCurrentWinner(winner) // This line is removed as currentWinner is now computed
+      // hasCurrentMonthWinner will automatically update via useMemo when members change
 
       // Reload members to get updated draw status
       await loadMembers()
+
+      // Show success message
+      setError(null)
     } catch (err) {
       console.error('Error declaring winner:', err)
-      setError('Failed to declare winner. Please try again.')
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Failed to declare winner. Please try again.')
+      }
       throw err // Re-throw to handle in dialog
+    } finally {
+      setIsDeclaringWinner(false)
     }
   }
 
@@ -256,6 +335,9 @@ export function Dashboard() {
       setError(null)
 
       const newMonth = await DatabaseService.proceedToNextMonth(selectedMonth)
+
+      // Update next month data state
+      setNextMonthHasData(true)
 
       // Switch to the new month
       setSelectedMonth(newMonth)
@@ -322,6 +404,18 @@ export function Dashboard() {
     }
   }, [members, filteredMembers, currentWinner, isStartingMonth])
 
+  /**
+   * Check if there are eligible members for winner declaration
+   * Members must be paid, have tokens, and not be drawn
+   */
+  const hasEligibleMembers = React.useMemo(() => {
+    return members.filter(m =>
+      m.payment_status === 'paid' &&
+      m.token_number &&
+      m.draw_status === 'not_drawn'
+    ).length > 0
+  }, [members])
+
   return (
     <div className="container mx-auto px-4 py-4 space-y-4 sm:px-6 sm:py-6 lg:py-8">
       {/* Header Section - Mobile optimized with stacked layout */}
@@ -335,6 +429,11 @@ export function Dashboard() {
             {currentWinner && (
               <span className="ml-2 inline-flex items-center gap-1">
                 &bull; <Crown className="h-4 w-4 text-yellow-500" /> Winner: {currentWinner.full_name}
+              </span>
+            )}
+            {!currentWinner && hasCurrentMonthWinner && (
+              <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
+                &bull; Winner already declared for this month
               </span>
             )}
           </p>
@@ -377,7 +476,7 @@ export function Dashboard() {
           <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
             <div className="text-xl font-bold sm:text-2xl">{stats.totalMembers}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.totalWinners} winners
+              {Object.values(allWinners).filter(winner => winner !== null).length} total winners
             </p>
             {/* Previous Winners Button */}
             <Button
@@ -448,24 +547,35 @@ export function Dashboard() {
                     Token {formatTokenDisplay(currentWinner.token_number)}
                   </div>
                 )}
+                <div className="text-xs text-yellow-600 font-medium">
+                  Winner of {formatMonthName(selectedMonth)}
+                </div>
               </div>
             ) : (
               <div className="space-y-14">
                 <div className="text-sm text-muted-foreground">
                   No winner declared yet
                 </div>
-                {/* Declare Winner Button */}
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDeclareWinnerDialogOpen(true)}
-                  disabled={members.filter(m => m.payment_status === 'paid' && m.token_number && m.draw_status === 'not_drawn').length === 0}
-                  className="w-full mt-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-5clear
-                  00 h-8 text-xs"
-                  size="sm"
-                >
-                  <Crown className="mr-1 h-3 w-3" />
-                  Declare Winner
-                </Button>
+                {/* Declare Winner Button - Only show if no winner exists for current month */}
+                {!hasCurrentMonthWinner && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDeclareWinnerDialogOpen(true)}
+                      disabled={!hasEligibleMembers}
+                      className="w-full mt-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-500 h-8 text-xs"
+                      size="sm"
+                    >
+                      <Crown className="mr-1 h-3 w-3" />
+                      Declare Winner
+                    </Button>
+                    {!hasEligibleMembers && (
+                      <div className="text-xs text-muted-foreground text-center">
+                        No eligible members (need paid members with tokens)
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -499,8 +609,8 @@ export function Dashboard() {
           </>
         )}
 
-        {/* Proceed to Next Month Button - Show if winner is declared */}
-        {currentWinner && DatabaseService.getNextMonth(selectedMonth) && (
+        {/* Proceed to Next Month Button - Show if winner is declared and next month doesn't have data */}
+        {currentWinner && DatabaseService.getNextMonth(selectedMonth) && !nextMonthHasData && (
           <Button
             variant="outline"
             onClick={handleProceedToNextMonth}
@@ -539,6 +649,8 @@ export function Dashboard() {
         onDeleteMember={handleDeleteMember}
         onViewHistory={handleViewMemberHistory}
         isLoading={isLoading}
+        currentMonth={selectedMonth}
+        allWinners={allWinners}
       />
 
       {/* Add Member Dialog - Only shown for starting month */}
@@ -569,6 +681,7 @@ export function Dashboard() {
         onDeclareWinner={handleDeclareWinner}
         members={members}
         isLoading={isLoading}
+        hasCurrentMonthWinner={hasCurrentMonthWinner}
       />
 
       {/* Member History Dialog */}

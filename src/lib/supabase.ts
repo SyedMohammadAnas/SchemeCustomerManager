@@ -26,7 +26,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Specific types for form options
 export type PaymentStatus = 'pending' | 'paid' | 'overdue'
-export type DrawStatus = 'not_drawn' | 'drawn' | 'winner'
+export type DrawStatus = 'not_drawn' | 'drawn' | 'winner' |
+  'winner_september_2025' | 'winner_october_2025' | 'winner_november_2025' | 'winner_december_2025' |
+  'winner_january_2026' | 'winner_february_2026' | 'winner_march_2026' | 'winner_april_2026' |
+  'winner_may_2026' | 'winner_june_2026' | 'winner_july_2026' | 'winner_august_2026' |
+  'winner_september_2026' | 'winner_october_2026' | 'winner_november_2026' | 'winner_december_2026'
 export type PaidToRecipient = 'Rafi' | 'Basheer'
 
 // Member interface representing the structure of each table record
@@ -88,4 +92,34 @@ export type MonthTable = typeof MONTHS[number]
 export const formatMonthName = (month: MonthTable): string => {
   const [monthName, year] = month.split('_')
   return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`
+}
+
+/**
+ * Helper function to create winner draw status for a specific month
+ */
+export const createWinnerDrawStatus = (month: MonthTable): DrawStatus => {
+  return `winner_${month}` as DrawStatus
+}
+
+/**
+ * Helper function to check if a draw status indicates a winner
+ */
+export const isWinnerStatus = (drawStatus: DrawStatus): boolean => {
+  return drawStatus.startsWith('winner_')
+}
+
+/**
+ * Helper function to extract month from winner draw status
+ */
+export const getWinnerMonth = (drawStatus: DrawStatus): MonthTable | null => {
+  if (!isWinnerStatus(drawStatus)) return null
+  const month = drawStatus.replace('winner_', '') as MonthTable
+  return MONTHS.includes(month) ? month : null
+}
+
+/**
+ * Helper function to check if a member is winner of a specific month
+ */
+export const isWinnerOfMonth = (member: Member, month: MonthTable): boolean => {
+  return member.draw_status === createWinnerDrawStatus(month)
 }

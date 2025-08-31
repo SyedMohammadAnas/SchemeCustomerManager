@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Member, NewMember, PaymentStatus } from "@/lib/supabase"
+import { Member, NewMember, PaymentStatus, isWinnerStatus } from "@/lib/supabase"
 import { validatePhoneNumber } from "@/lib/utils"
 
 /**
@@ -327,6 +327,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               <Select
                 value={formData.payment_status}
                 onValueChange={(value) => handleInputChange('payment_status', value as PaymentStatus)}
+                disabled={isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required'}
               >
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue />
@@ -335,8 +336,15 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="no_payment_required">No Payment Required</SelectItem>
                 </SelectContent>
               </Select>
+              {/* Show note for previously won customers */}
+              {(isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required') && (
+                <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                  <strong>Note:</strong> This member has won previously and doesn't need to worry about payment. Payment fields are disabled.
+                </p>
+              )}
             </div>
 
             {/* Paid To Field */}
@@ -347,6 +355,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               <Select
                 value={formData.paid_to || ''}
                 onValueChange={(value) => handleInputChange('paid_to', value)}
+                disabled={isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required'}
               >
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue placeholder="Select recipient" />
@@ -356,6 +365,12 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
                   <SelectItem value="Basheer">Basheer</SelectItem>
                 </SelectContent>
               </Select>
+              {/* Show note for previously won customers */}
+              {isWinnerStatus(member?.draw_status || 'not_drawn') && (
+                <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                  <strong>Note:</strong> Payment recipient is not needed for previously won customers.
+                </p>
+              )}
             </div>
           </div>
 

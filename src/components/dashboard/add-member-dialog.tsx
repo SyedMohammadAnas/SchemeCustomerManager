@@ -288,6 +288,7 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="no_payment_required">No Payment Required</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -42,10 +42,10 @@ export function DeclareWinnerDialog({
   const [selectedMemberId, setSelectedMemberId] = React.useState<string>('')
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
-  // Filter eligible members (paid members with tokens who haven't been drawn)
+  // Filter eligible members (paid members or those with no payment required, with tokens who haven't been drawn)
   const eligibleMembers = React.useMemo(() => {
     return members.filter(member =>
-      member.payment_status === 'paid' &&
+      (member.payment_status === 'paid' || member.payment_status === 'no_payment_required') &&
       member.token_number &&
       member.draw_status === 'not_drawn'
     )

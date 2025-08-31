@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Member, MonthTable, formatMonthName, MONTHS } from "@/lib/supabase"
+import { Member, MonthTable, formatMonthName, MONTHS, isWinnerStatus, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { DatabaseService } from "@/lib/database"
 import { History, User, Trophy, Clock, CheckCircle, XCircle } from "lucide-react"
@@ -67,20 +67,22 @@ export function MemberHistoryDialog({
 
   /**
    * Get status icon based on member data for a month
+   * Shows appropriate icons for different member statuses
    */
-  const getStatusIcon = (monthMember: Member | null) => {
+  const getStatusIcon = (monthMember: Member | null, month: MonthTable) => {
     if (!monthMember) {
       return <XCircle className="h-4 w-4 text-gray-400" />
     }
 
-    if (monthMember.draw_status === 'winner') {
+    if (isWinnerOfMonth(monthMember, month)) {
       return <Trophy className="h-4 w-4 text-yellow-500" />
     }
 
-    if (monthMember.draw_status === 'drawn') {
+    if (isWinnerStatus(monthMember.draw_status)) {
       return <Trophy className="h-4 w-4 text-gray-500" />
     }
 
+    // For customers who haven't won yet, show payment status icons
     if (monthMember.payment_status === 'paid') {
       return <CheckCircle className="h-4 w-4 text-green-500" />
     }
@@ -94,24 +96,33 @@ export function MemberHistoryDialog({
 
   /**
    * Get status description for a month
+   * Shows payment status only for the month they won, no payment concerns for other months
    */
-  const getStatusDescription = (monthMember: Member | null) => {
+  const getStatusDescription = (monthMember: Member | null, month: MonthTable) => {
     if (!monthMember) return 'Not participated'
 
     const statuses = []
 
-    if (monthMember.draw_status === 'winner') {
+    if (isWinnerOfMonth(monthMember, month)) {
       statuses.push('Winner')
-    } else if (monthMember.draw_status === 'drawn') {
-      statuses.push('Previously won')
-    }
-
-    if (monthMember.payment_status === 'paid') {
-      statuses.push('Paid')
-    } else if (monthMember.payment_status === 'pending') {
-      statuses.push('Pending payment')
-    } else if (monthMember.payment_status === 'overdue') {
-      statuses.push('Overdue payment')
+      // Show payment status only for the month they won
+      if (monthMember.payment_status === 'paid') {
+        statuses.push('Paid')
+      }
+    } else if (isWinnerStatus(monthMember.draw_status)) {
+      // For months after they won, no payment concerns
+      statuses.push('Winner of previous month')
+    } else {
+      // Only show payment status for months where they haven't won yet
+      if (monthMember.payment_status === 'paid') {
+        statuses.push('Paid')
+      } else if (monthMember.payment_status === 'pending') {
+        statuses.push('Pending payment')
+      } else if (monthMember.payment_status === 'overdue') {
+        statuses.push('Overdue payment')
+      } else if (monthMember.payment_status === 'no_payment_required') {
+        statuses.push('No payment required')
+      }
     }
 
     if (monthMember.token_number) {
@@ -124,12 +135,13 @@ export function MemberHistoryDialog({
   /**
    * Get background color for month entry
    */
-  const getMonthBackgroundColor = (monthMember: Member | null) => {
+  const getMonthBackgroundColor = (monthMember: Member | null, month: MonthTable) => {
     if (!monthMember) return 'bg-gray-50'
 
-    if (monthMember.draw_status === 'winner') return 'bg-yellow-50 border-yellow-200'
-    if (monthMember.draw_status === 'drawn') return 'bg-gray-100 border-gray-300'
+    if (isWinnerOfMonth(monthMember, month)) return 'bg-yellow-50 border-yellow-200'
+    if (isWinnerStatus(monthMember.draw_status)) return 'bg-gray-100 border-gray-300'
     if (monthMember.payment_status === 'paid') return 'bg-green-50 border-green-200'
+    if (monthMember.payment_status === 'no_payment_required') return 'bg-blue-50 border-blue-200'
     return 'bg-blue-50 border-blue-200'
   }
 
@@ -186,13 +198,13 @@ export function MemberHistoryDialog({
                 return (
                   <div
                     key={month}
-                    className={`flex items-center gap-3 p-3 border rounded-md transition-all ${getMonthBackgroundColor(monthMember)} ${
+                    className={`flex items-center gap-3 p-3 border rounded-md transition-all ${getMonthBackgroundColor(monthMember, month)} ${
                       isCurrentMonth ? 'ring-2 ring-blue-500' : ''
                     }`}
                   >
                     {/* Month indicator with connecting line */}
                     <div className="flex flex-col items-center">
-                      {getStatusIcon(monthMember)}
+                      {getStatusIcon(monthMember, month)}
                       {index < MONTHS.length - 1 && (
                         <div className="w-px h-4 bg-gray-300 mt-1" />
                       )}
@@ -208,7 +220,7 @@ export function MemberHistoryDialog({
                       </div>
 
                       <div className="text-sm text-muted-foreground">
-                        {getStatusDescription(monthMember)}
+                        {getStatusDescription(monthMember, month)}
                       </div>
 
                       {/* Additional details for active months */}
@@ -224,23 +236,33 @@ export function MemberHistoryDialog({
                     </div>
 
                     {/* Status badges */}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 items-end">
                       {monthMember && (
                         <>
-                          {monthMember.draw_status === 'winner' && (
-                            <Badge className="bg-yellow-600 text-xs">Winner</Badge>
+                          {/* Show Winner badge and trophy icon in the month they actually won */}
+                          {isWinnerOfMonth(monthMember, month) && (
+                            <>
+                              <Badge className="bg-yellow-600 text-xs">Winner</Badge>
+                              <Trophy className="h-4 w-4 text-yellow-500" />
+                            </>
                           )}
-                          {monthMember.draw_status === 'drawn' && (
-                            <Badge variant="secondary" className="text-xs">Previously Won</Badge>
-                          )}
-                          {monthMember.payment_status === 'paid' && (
+                          {/* Show payment status ONLY for the month they won */}
+                          {isWinnerOfMonth(monthMember, month) && monthMember.payment_status === 'paid' && (
                             <Badge className="bg-green-600 text-xs">Paid</Badge>
                           )}
-                          {monthMember.payment_status === 'pending' && (
-                            <Badge variant="outline" className="text-xs">Pending</Badge>
-                          )}
-                          {monthMember.payment_status === 'overdue' && (
-                            <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                          {/* Show payment status for months where they haven't won yet */}
+                          {!isWinnerStatus(monthMember.draw_status) && (
+                            <>
+                              {monthMember.payment_status === 'paid' && (
+                                <Badge className="bg-green-600 text-xs">Paid</Badge>
+                              )}
+                              {monthMember.payment_status === 'pending' && (
+                                <Badge variant="outline" className="text-xs">Pending</Badge>
+                              )}
+                              {monthMember.payment_status === 'overdue' && (
+                                <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                              )}
+                            </>
                           )}
                         </>
                       )}

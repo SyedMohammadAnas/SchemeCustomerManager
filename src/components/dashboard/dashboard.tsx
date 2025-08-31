@@ -16,7 +16,7 @@ import { MemberHistoryDialog } from "./member-history-dialog"
 import { PreviousWinnersDialog } from "./previous-winners-dialog"
 import { UnpaidMembersDialog } from "./unpaid-members-dialog"
 import { DatabaseService } from "@/lib/database"
-import { Member, NewMember, MonthTable, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
+import { Member, NewMember, MonthTable, formatMonthName, isWinnerOfMonth, isWinnerStatus } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 
@@ -325,7 +325,7 @@ export function Dashboard() {
       return
     }
 
-    const confirmMessage = `This will copy all members to ${formatMonthName(nextMonth)} and reset payment statuses. Are you sure?`
+    const confirmMessage = `This will copy all members to ${formatMonthName(nextMonth)}. Payment statuses will be reset to 'pending' for regular members, and 'no_payment_required' for previous winners. Are you sure?`
     if (!confirm(confirmMessage)) {
       return
     }
@@ -381,21 +381,28 @@ export function Dashboard() {
 
   /**
    * Calculate dashboard statistics based on filtered members
+   * Includes proper counting of members with 'no_payment_required' status
    */
   const stats = React.useMemo(() => {
     const totalWinners = members.filter(m => m.draw_status === 'winner').length
     const drawnMembers = members.filter(m => m.draw_status === 'drawn').length
 
-    // Adjust paid members count: if there's a winner and we're not in starting month, exclude the winner
-    let paidMembersCount = members.filter(m => m.payment_status === 'paid').length
-    if (currentWinner && !isStartingMonth) {
-      paidMembersCount = Math.max(0, paidMembersCount - 1) // Subtract 1 for the winner
-    }
+    // Count members with different payment statuses
+    const paidMembersCount = members.filter(m => m.payment_status === 'paid').length
+    const noPaymentRequiredCount = members.filter(m => m.payment_status === 'no_payment_required').length
+    const pendingMembersCount = members.filter(m => m.payment_status === 'pending').length
+    const overdueMembersCount = members.filter(m => m.payment_status === 'overdue').length
+
+    // Calculate effective paid members (including those who don't need to pay)
+    const effectivePaidMembers = paidMembersCount + noPaymentRequiredCount
 
     return {
       totalMembers: members.length,
       membersWithTokens: members.filter(m => m.token_number).length,
-      paidMembers: paidMembersCount,
+      paidMembers: effectivePaidMembers,
+      noPaymentRequired: noPaymentRequiredCount,
+      pendingMembers: pendingMembersCount,
+      overdueMembers: overdueMembersCount,
       winnersSelected: totalWinners,
       drawnMembers: drawnMembers,
       totalWinners: totalWinners + drawnMembers, // Current + previous winners
@@ -406,11 +413,11 @@ export function Dashboard() {
 
   /**
    * Check if there are eligible members for winner declaration
-   * Members must be paid, have tokens, and not be drawn
+   * Members must be paid or have no payment required, have tokens, and not be drawn
    */
   const hasEligibleMembers = React.useMemo(() => {
     return members.filter(m =>
-      m.payment_status === 'paid' &&
+      (m.payment_status === 'paid' || m.payment_status === 'no_payment_required') &&
       m.token_number &&
       m.draw_status === 'not_drawn'
     ).length > 0
@@ -436,6 +443,9 @@ export function Dashboard() {
                 &bull; Winner already declared for this month
               </span>
             )}
+            <span className="ml-2 inline-flex items-center gap-1 text-blue-600">
+              &bull; Previous winners don't need to pay (shown dimmed in table)
+            </span>
           </p>
         </div>
 
@@ -516,6 +526,11 @@ export function Dashboard() {
             <p className="text-xs text-muted-foreground">
               of {stats.totalMembers} members
             </p>
+            {stats.noPaymentRequired > 0 && (
+              <p className="text-xs text-blue-600 font-medium mt-1">
+                {stats.noPaymentRequired} no payment required (previous winners)
+              </p>
+            )}
             {/* Unpaid Members Button */}
             <Button
               variant="outline"
@@ -524,7 +539,9 @@ export function Dashboard() {
               size="sm"
             >
               <AlertCircle className="mr-1 h-3 w-3" />
-              Unpaid ({members.filter(m => m.payment_status === 'pending' || m.payment_status === 'overdue').length})
+              Unpaid ({members.filter(m =>
+                m.payment_status === 'pending' || m.payment_status === 'overdue'
+              ).length})
             </Button>
           </CardContent>
         </Card>
@@ -563,7 +580,7 @@ export function Dashboard() {
                       variant="outline"
                       onClick={() => setIsDeclareWinnerDialogOpen(true)}
                       disabled={!hasEligibleMembers}
-                      className="w-full mt-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-500 h-8 text-xs"
+                      className="w-full -mt-1 bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-500 h-8 text-xs"
                       size="sm"
                     >
                       <Crown className="mr-1 h-3 w-3" />
@@ -571,7 +588,7 @@ export function Dashboard() {
                     </Button>
                     {!hasEligibleMembers && (
                       <div className="text-xs text-muted-foreground text-center">
-                        No eligible members (need paid members with tokens)
+                        No eligible members (need paid members or those with no payment required, with tokens)
                       </div>
                     )}
                   </div>

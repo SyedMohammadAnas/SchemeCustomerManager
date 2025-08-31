@@ -100,6 +100,7 @@ export class DatabaseService {
    * Update an existing member's information
    * Maintains alphabetical sorting after update
    * Handles family changes and mobile number sharing
+   * Prevents changing payment status for previously won customers
    */
   static async updateMember(
     monthTable: MonthTable,
@@ -107,6 +108,25 @@ export class DatabaseService {
     updates: Partial<Omit<Member, 'id' | 'created_at' | 'updated_at'>>
   ): Promise<Member> {
     try {
+      // Get current member data to check if they're previously won
+      const currentMember = await this.getMembers(monthTable)
+        .then(members => members.find(m => m.id === memberId))
+
+      if (!currentMember) {
+        throw new Error('Member not found')
+      }
+
+      // Prevent changing payment status for previously won customers
+      const isPreviouslyWon = currentMember.draw_status === 'winner' || currentMember.draw_status === 'drawn'
+      if (isPreviouslyWon && (updates.payment_status || updates.paid_to)) {
+        throw new Error('Cannot change payment status for previously won customers. They don\'t need to pay anymore.')
+      }
+
+      // Prevent changing payment status for members with 'no_payment_required' status
+      if (currentMember.payment_status === 'no_payment_required' && (updates.payment_status || updates.paid_to)) {
+        throw new Error('Cannot change payment status for members who don\'t need to pay. Their status is automatically managed.')
+      }
+
       // If family is being changed, handle mobile number sharing
       const finalUpdates = { ...updates }
       if (updates.family && updates.family !== 'Individual') {
@@ -255,10 +275,12 @@ export class DatabaseService {
   }
 
   /**
-   * Proceed to next month by copying current month data
-   * Resets payment status and clears paid_to for all members
+   * Proceed to the next month by copying all members from current month
    * Maintains token numbers and other member information
    * Updates previous winner's draw_status to 'drawn'
+   * Resets payment status to 'pending' for regular members
+   * Sets payment_status to 'no_payment_required' for previous winners only
+   * Clears paid_to information for all members in the new month
    */
   static async proceedToNextMonth(currentMonth: MonthTable): Promise<MonthTable> {
     try {
@@ -287,17 +309,49 @@ export class DatabaseService {
       // Find current month's winner
       const currentWinner = await this.getCurrentWinner(currentMonth)
 
-      // Prepare members for next month
-      const membersForNextMonth = currentMembers.map(member => ({
-        full_name: member.full_name,
-        mobile_number: member.mobile_number,
-        family: member.family,
-        token_number: member.token_number,
-        payment_status: 'pending' as const,
-        paid_to: null,
-        draw_status: (currentWinner && member.id === currentWinner.id) ? 'drawn' as const : 'not_drawn' as const,
-        additional_information: member.additional_information
-      }))
+            // Prepare members for next month
+      const membersForNextMonth = currentMembers.map(member => {
+        // Check if this member has won in any previous month
+        // We need to check ALL previous months, not just the current one
+        const hasWonPreviously = member.draw_status === 'winner' || member.draw_status === 'drawn' ||
+                                (currentWinner && member.id === currentWinner.id)
+
+        // Set payment status based on previous wins
+        let paymentStatus: PaymentStatus
+        let paidToValue: PaidToRecipient | null = null
+
+        if (hasWonPreviously) {
+          // Previous winners don't need to pay
+          paymentStatus = 'no_payment_required' as const
+          paidToValue = null // Clear paid_to for winners
+        } else {
+          // Regular members start fresh with pending payment status
+          paymentStatus = 'pending' as const
+          paidToValue = null // Clear paid_to for new month
+        }
+
+        // Determine draw status: if they won in current month, mark as 'drawn'
+        // If they won in any previous month, keep them as 'drawn'
+        let drawStatus: DrawStatus
+        if (currentWinner && member.id === currentWinner.id) {
+          drawStatus = 'drawn' as const
+        } else if (member.draw_status === 'winner' || member.draw_status === 'drawn') {
+          drawStatus = 'drawn' as const // Keep previous winner status
+        } else {
+          drawStatus = 'not_drawn' as const
+        }
+
+        return {
+          full_name: member.full_name,
+          mobile_number: member.mobile_number,
+          family: member.family,
+          token_number: member.token_number,
+          payment_status: paymentStatus,
+          paid_to: paidToValue, // Reset paid_to for new month
+          draw_status: drawStatus,
+          additional_information: member.additional_information
+        }
+      })
 
       // Insert all members to next month table
       const { error } = await supabase
@@ -310,8 +364,16 @@ export class DatabaseService {
         throw new Error(`Failed to copy members to next month: ${error.message}`)
       }
 
-      // Don't change the current month's winner status - they should remain as winner in their original month
-      // The winner is only marked as 'drawn' when copied to the next month
+      // Update payment statuses for all previous winners in the new month
+      // This ensures that previous winners from all months get 'no_payment_required' status
+      try {
+        const { error: updateError } = await supabase.rpc('update_previous_winners_payment_status', { target_month: nextMonth })
+        if (updateError) {
+          console.warn(`Warning: Could not update previous winners payment status: ${updateError.message}`)
+        }
+      } catch (updateError) {
+        console.warn('Warning: Could not update previous winners payment status:', updateError)
+      }
 
       return nextMonth
     } catch (error) {

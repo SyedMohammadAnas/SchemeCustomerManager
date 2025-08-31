@@ -25,7 +25,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
  */
 
 // Specific types for form options
-export type PaymentStatus = 'pending' | 'paid' | 'overdue'
+export type PaymentStatus = 'pending' | 'paid' | 'overdue' | 'no_payment_required'
 export type DrawStatus = 'not_drawn' | 'drawn' | 'winner' |
   'winner_september_2025' | 'winner_october_2025' | 'winner_november_2025' | 'winner_december_2025' |
   'winner_january_2026' | 'winner_february_2026' | 'winner_march_2026' | 'winner_april_2026' |

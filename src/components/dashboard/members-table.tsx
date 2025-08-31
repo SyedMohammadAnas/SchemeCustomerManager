@@ -32,8 +32,11 @@ interface MembersTableProps {
 /**
  * Badge variant mapping for payment status
  * Provides consistent color coding across the application
+ * Shows actual payment status in current month table
+ * Handles 'no_payment_required' for previous winners
  */
-const getPaymentStatusBadge = (status: Member['payment_status']) => {
+const getPaymentStatusBadge = (status: Member['payment_status'], member: Member) => {
+  // Show actual payment status in the current month table
   switch (status) {
     case 'paid':
       return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Paid</Badge>
@@ -41,6 +44,8 @@ const getPaymentStatusBadge = (status: Member['payment_status']) => {
       return <Badge variant="secondary">Pending</Badge>
     case 'overdue':
       return <Badge variant="destructive">Overdue</Badge>
+    case 'no_payment_required':
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">No Payment Required</Badge>
     default:
       return <Badge variant="outline">Unknown</Badge>
   }
@@ -79,7 +84,7 @@ const getDrawStatusBadge = (status: Member['draw_status'], member: Member, curre
 
 /**
  * Get row styling based on member status
- * Highlights winners and dims previously drawn members
+ * Highlights current month winners and dims previously drawn members
  */
 const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
   // A member is the current month winner if they won in the currently selected month
@@ -88,10 +93,10 @@ const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<
   const isDrawn = member.draw_status === 'drawn';
 
   if (isCurrentMonthWinner) {
-    return 'bg-yellow-50 border-yellow-200 border-2'
+    return 'bg-yellow-50 border-yellow-200 border-2' // Current month winner - bright yellow
   }
   if (isDrawn) {
-    return 'bg-gray-50 opacity-75'
+    return 'bg-gray-50 opacity-75' // Previous winner - dimmed gray
   }
   return ''
 }
@@ -190,7 +195,7 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
 
         {/* Status Badges */}
         <div className="flex flex-wrap gap-2">
-          {getPaymentStatusBadge(member.payment_status)}
+          {getPaymentStatusBadge(member.payment_status, member)}
           {getDrawStatusBadge(member.draw_status, member, currentMonth, allWinners)}
         </div>
 
@@ -198,6 +203,11 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
         {member.paid_to && (
           <div className="text-xs text-muted-foreground">
             Paid to: {member.paid_to}
+          </div>
+        )}
+        {member.payment_status === 'no_payment_required' && !member.paid_to && (
+          <div className="text-xs text-blue-600 font-medium">
+            No payment required (previous winner)
           </div>
         )}
 
@@ -320,11 +330,8 @@ export function MembersTable({
                 const isDrawn = member.draw_status === 'drawn';
 
                 let rowClass = getRowStyling(member, currentMonth, allWinners);
-                if (isCurrentMonthWinner) {
-                  rowClass += ' bg-yellow-50 border-yellow-200 border-2'; // Highlight current month winner
-                } else if (isDrawn) {
-                  rowClass += ' bg-gray-50 opacity-75'; // Dim previously drawn
-                }
+                // The getRowStyling function already handles all the styling logic
+                // No need to add additional classes here
 
                 return (
                   <TableRow
@@ -356,11 +363,16 @@ export function MembersTable({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{getPaymentStatusBadge(member.payment_status)}</TableCell>
+                    <TableCell>{getPaymentStatusBadge(member.payment_status, member)}</TableCell>
                     <TableCell>
                       {member.paid_to && (
                         <Badge variant="outline" className="text-xs">
                           {member.paid_to}
+                        </Badge>
+                      )}
+                      {member.payment_status === 'no_payment_required' && !member.paid_to && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          No payment required
                         </Badge>
                       )}
                     </TableCell>

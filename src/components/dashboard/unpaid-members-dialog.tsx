@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Member } from "@/lib/supabase"
+import { Member, isWinnerStatus } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { User, Users, AlertCircle } from "lucide-react"
 
@@ -29,9 +29,12 @@ interface UnpaidMembersDialogProps {
  */
 export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembersDialogProps) {
   // Filter unpaid members (pending and overdue)
+  // Exclude members with 'no_payment_required' status since they don't need to pay
   const unpaidMembers = React.useMemo(() => {
     return members.filter(member =>
-      member.payment_status === 'pending' || member.payment_status === 'overdue'
+      // Only show as unpaid if they have pending/overdue payment and don't have 'no_payment_required' status
+      (member.payment_status === 'pending' || member.payment_status === 'overdue') &&
+      member.payment_status !== 'no_payment_required'
     )
   }, [members])
 

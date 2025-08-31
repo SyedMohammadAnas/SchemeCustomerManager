@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Member, isWinnerStatus } from "@/lib/supabase"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Member, isWinnerStatus, PaymentStatus, PaidToRecipient } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { User, Users, AlertCircle } from "lucide-react"
 
@@ -21,13 +23,21 @@ interface UnpaidMembersDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   members: Member[]
+  onPaymentStatusChange?: (memberId: number, status: PaymentStatus) => void
+  onPaidToChange?: (memberId: number, paidTo: string) => void
 }
 
 /**
  * Unpaid Members Dialog Component
  * Displays all members who haven't paid yet with their details
  */
-export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembersDialogProps) {
+export function UnpaidMembersDialog({
+  open,
+  onOpenChange,
+  members,
+  onPaymentStatusChange,
+  onPaidToChange
+}: UnpaidMembersDialogProps) {
   // Filter unpaid members (pending and overdue)
   // Exclude members with 'no_payment_required' status since they don't need to pay
   const unpaidMembers = React.useMemo(() => {
@@ -37,6 +47,19 @@ export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembe
       member.payment_status !== 'no_payment_required'
     )
   }, [members])
+
+  // Handler functions for payment updates
+  const handlePaymentStatusChange = (memberId: number, status: PaymentStatus) => {
+    if (onPaymentStatusChange) {
+      onPaymentStatusChange(memberId, status)
+    }
+  }
+
+  const handlePaidToChange = (memberId: number, paidTo: string) => {
+    if (onPaidToChange) {
+      onPaidToChange(memberId, paidTo)
+    }
+  }
 
   // Group unpaid members by payment status
   const pendingMembers = unpaidMembers.filter(m => m.payment_status === 'pending')
@@ -51,7 +74,8 @@ export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembe
             Unpaid Members
           </DialogTitle>
           <DialogDescription>
-            Members who haven&apos;t completed their payment for this month
+            Members who haven&apos;t completed their payment for this month.
+            You can directly update payment status and recipient from here.
           </DialogDescription>
         </DialogHeader>
 
@@ -122,6 +146,50 @@ export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembe
                           )}
                         </div>
 
+                        {/* Payment Status and Paid To Dropdowns */}
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                          {/* Payment Status */}
+                          <div className="space-y-1">
+                            <Label htmlFor={`payment-${member.id}`} className="text-xs text-muted-foreground">
+                              Payment Status
+                            </Label>
+                            <Select
+                              value={member.payment_status}
+                              onValueChange={(value) => handlePaymentStatusChange(member.id, value as PaymentStatus)}
+                              disabled={member.payment_status === 'no_payment_required'}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="overdue">Overdue</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Paid To */}
+                          <div className="space-y-1">
+                            <Label htmlFor={`paid-to-${member.id}`} className="text-xs text-muted-foreground">
+                              Paid To
+                            </Label>
+                            <Select
+                              value={member.payment_status === 'no_payment_required' ? '' : (member.paid_to || '')}
+                              onValueChange={(value) => handlePaidToChange(member.id, value)}
+                              disabled={member.payment_status === 'no_payment_required'}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select recipient" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Rafi">Rafi</SelectItem>
+                                <SelectItem value="Basheer">Basheer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
                         {/* Additional Information */}
                         {member.additional_information && (
                           <div className="text-sm text-muted-foreground pt-2 border-t">
@@ -169,6 +237,50 @@ export function UnpaidMembersDialog({ open, onOpenChange, members }: UnpaidMembe
                               {member.family}
                             </Badge>
                           )}
+                        </div>
+
+                        {/* Payment Status and Paid To Dropdowns */}
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                          {/* Payment Status */}
+                          <div className="space-y-1">
+                            <Label htmlFor={`payment-overdue-${member.id}`} className="text-xs text-muted-foreground">
+                              Payment Status
+                            </Label>
+                            <Select
+                              value={member.payment_status}
+                              onValueChange={(value) => handlePaymentStatusChange(member.id, value as PaymentStatus)}
+                              disabled={member.payment_status === 'no_payment_required'}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="overdue">Overdue</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Paid To */}
+                          <div className="space-y-1">
+                            <Label htmlFor={`paid-to-overdue-${member.id}`} className="text-xs text-muted-foreground">
+                              Paid To
+                            </Label>
+                            <Select
+                              value={member.payment_status === 'no_payment_required' ? '' : (member.paid_to || '')}
+                              onValueChange={(value) => handlePaidToChange(member.id, value)}
+                              disabled={member.payment_status === 'no_payment_required'}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select recipient" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Rafi">Rafi</SelectItem>
+                                <SelectItem value="Basheer">Basheer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
                         {/* Additional Information */}

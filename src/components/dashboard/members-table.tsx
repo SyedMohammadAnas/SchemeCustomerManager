@@ -84,7 +84,7 @@ const getDrawStatusBadge = (status: Member['draw_status'], member: Member, curre
 
 /**
  * Get row styling based on member status
- * Highlights current month winners and dims previously drawn members
+ * Highlights current month winners and gives purple outline to previously drawn members
  */
 const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<string, Member | null>) => {
   // A member is the current month winner if they won in the currently selected month
@@ -96,7 +96,7 @@ const getRowStyling = (member: Member, currentMonth: string, allWinners: Record<
     return 'bg-yellow-50 border-yellow-200 border-2' // Current month winner - bright yellow
   }
   if (isDrawn) {
-    return 'bg-gray-50 opacity-75' // Previous winner - dimmed gray
+    return 'bg-purple-50 border-purple-300 border-2' // Previous winner - purple outline
   }
   return ''
 }

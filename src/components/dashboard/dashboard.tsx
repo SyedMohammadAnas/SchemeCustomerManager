@@ -16,7 +16,7 @@ import { MemberHistoryDialog } from "./member-history-dialog"
 import { PreviousWinnersDialog } from "./previous-winners-dialog"
 import { UnpaidMembersDialog } from "./unpaid-members-dialog"
 import { DatabaseService } from "@/lib/database"
-import { Member, NewMember, MonthTable, formatMonthName, isWinnerOfMonth, isWinnerStatus } from "@/lib/supabase"
+import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth, isWinnerStatus } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 
@@ -358,6 +358,36 @@ export function Dashboard() {
   }
 
   /**
+   * Handle payment status change from unpaid members dialog
+   */
+  const handlePaymentStatusChange = async (memberId: number, status: PaymentStatus) => {
+    try {
+      setError(null)
+      await DatabaseService.updateMember(selectedMonth, memberId, { payment_status: status })
+      // Reload members to get updated data
+      await loadMembers()
+    } catch (err) {
+      console.error('Error updating payment status:', err)
+      setError('Failed to update payment status. Please try again.')
+    }
+  }
+
+  /**
+   * Handle paid to change from unpaid members dialog
+   */
+  const handlePaidToChange = async (memberId: number, paidTo: string) => {
+    try {
+      setError(null)
+      await DatabaseService.updateMember(selectedMonth, memberId, { paid_to: paidTo as PaidToRecipient })
+      // Reload members to get updated data
+      await loadMembers()
+    } catch (err) {
+      console.error('Error updating paid to:', err)
+      setError('Failed to update paid to. Please try again.')
+    }
+  }
+
+  /**
    * Filter members based on search query
    * Searches across full name, mobile number, and family name
    */
@@ -428,8 +458,8 @@ export function Dashboard() {
       {/* Header Section - Mobile optimized with stacked layout */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Scheme Register Dashboard
+          <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">
+            రఫీ బంగారు పొదుపు పథకం
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             Manage members and tokens for {formatMonthName(selectedMonth)}
@@ -443,9 +473,6 @@ export function Dashboard() {
                 &bull; Winner already declared for this month
               </span>
             )}
-            <span className="ml-2 inline-flex items-center gap-1 text-blue-600">
-              &bull; Previous winners don't need to pay (shown dimmed in table)
-            </span>
           </p>
         </div>
 
@@ -522,15 +549,10 @@ export function Dashboard() {
             <CreditCard className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </CardHeader>
           <CardContent className="px-3 pb-2 sm:px-4 sm:pb-3">
-            <div className="text-xl font-bold sm:text-2xl">{stats.paidMembers}</div>
+            <div className="text-xl font-bold sm:text-2xl">{stats.paidMembers - stats.noPaymentRequired}</div>
             <p className="text-xs text-muted-foreground">
-              of {stats.totalMembers} members
+              of {stats.totalMembers} members {stats.noPaymentRequired > 0 && `(+${stats.noPaymentRequired} winner${stats.noPaymentRequired > 1 ? 's' : ''})`}
             </p>
-            {stats.noPaymentRequired > 0 && (
-              <p className="text-xs text-blue-600 font-medium mt-1">
-                {stats.noPaymentRequired} no payment required (previous winners)
-              </p>
-            )}
             {/* Unpaid Members Button */}
             <Button
               variant="outline"
@@ -719,6 +741,8 @@ export function Dashboard() {
         open={isUnpaidMembersDialogOpen}
         onOpenChange={setIsUnpaidMembersDialogOpen}
         members={members}
+        onPaymentStatusChange={handlePaymentStatusChange}
+        onPaidToChange={handlePaidToChange}
       />
     </div>
   )

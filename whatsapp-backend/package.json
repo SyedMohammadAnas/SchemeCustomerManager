@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test-api.js"
+    "test": "node test-api.js",
+    "postinstall": "echo 'Skipping Puppeteer download in production'"
   },
   "keywords": ["whatsapp", "api", "backend", "messaging"],
   "author": "Rafi Scheme",
@@ -25,5 +26,6 @@
   },
   "engines": {
     "node": ">=16.0.0"
-  }
+  },
+  "puppeteer_skip_chromium_download": true
 }

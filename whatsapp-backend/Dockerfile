@@ -16,7 +16,7 @@ RUN npm ci --only=production && npm cache clean --force
 # Production stage
 FROM node:18-alpine AS production
 
-# Install additional packages needed for Puppeteer
+# Install additional packages needed for Puppeteer and Chrome
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -24,7 +24,9 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    curl
+    curl \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
 
 # Create app directory and user
 WORKDIR /app
@@ -37,13 +39,19 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy application source code
 COPY --chown=whatsapp:nodejs . .
 
-# Set Puppeteer to use installed Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Make startup script executable
+RUN chmod +x start.sh
 
-# Create directories for sessions and logs
+# Set Puppeteer to use installed Chromium with proper paths
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    CHROME_BIN=/usr/bin/chromium-browser \
+    CHROME_PATH=/usr/bin/chromium-browser
+
+# Create directories for sessions and logs with proper permissions
 RUN mkdir -p whatsapp-session logs && \
-    chown -R whatsapp:nodejs whatsapp-session logs
+    chown -R whatsapp:nodejs whatsapp-session logs && \
+    chmod -R 755 whatsapp-session logs
 
 # Switch to non-root user
 USER whatsapp
@@ -55,5 +63,8 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
-# Start the application
-CMD ["node", "src/server.js"]
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application using the startup script
+CMD ["./start.sh"]

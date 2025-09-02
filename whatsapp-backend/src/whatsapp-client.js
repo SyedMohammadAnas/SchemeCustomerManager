@@ -28,6 +28,7 @@ function initializeWhatsAppClient() {
     }),
     puppeteer: {
       headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -36,8 +37,23 @@ function initializeWhatsAppClient() {
         '--no-first-run',
         '--no-zygote',
         '--single-process',
-        '--disable-gpu'
-      ]
+        '--disable-gpu',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-images',
+        '--disable-javascript',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--memory-pressure-off',
+        '--max_old_space_size=4096'
+      ],
+      timeout: 60000,
+      protocolTimeout: 60000
     }
   });
 
@@ -84,8 +100,22 @@ function initializeWhatsAppClient() {
     qrCodeData = null;
   });
 
-  // Initialize the client
-  client.initialize();
+  // Event handler for loading screen
+  client.on('loading_screen', (percent, message) => {
+    console.log(`📱 Loading: ${percent}% - ${message}`);
+  });
+
+  // Initialize the client with error handling
+  client.initialize().catch(error => {
+    console.error('❌ Failed to initialize WhatsApp client:', error);
+    connectionStatus = 'initialization_failed';
+
+    // Retry initialization after 30 seconds
+    setTimeout(() => {
+      console.log('🔄 Retrying WhatsApp client initialization...');
+      initializeWhatsAppClient();
+    }, 30000);
+  });
 }
 
 /**

@@ -52,7 +52,7 @@ export function UnpaidMembersDialog({
   const [isSendingBulk, setIsSendingBulk] = React.useState(false)
   const [sendingIndividual, setSendingIndividual] = React.useState<Set<number>>(new Set())
   const [bulkProgress, setBulkProgress] = React.useState<{ current: number; total: number; memberName: string } | null>(null)
-  const [deadlineInfo, setDeadlineInfo] = React.useState(calculateDeadlineInfo())
+  const [deadlineInfo] = React.useState(calculateDeadlineInfo())
 
   // State for search functionality
   const [searchQuery, setSearchQuery] = React.useState('')

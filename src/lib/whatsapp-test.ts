@@ -159,7 +159,7 @@ export async function runAllTests() {
 
 // Export for use in browser console
 if (typeof window !== 'undefined') {
-  (window as any).whatsappTest = {
+  (window as unknown as { whatsappTest: Record<string, unknown> }).whatsappTest = {
     testDeadlineCalculation,
     testPhoneNumberFormatting,
     testReminderMessageGeneration,

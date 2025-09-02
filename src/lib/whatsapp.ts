@@ -21,7 +21,7 @@ interface WhatsAppResponse {
   };
   error?: string;
   // Backend might return different formats
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -75,7 +75,7 @@ export function calculateDeadlineInfo(): {
  */
 export function formatPhoneNumber(phoneNumber: string): string {
   // Remove all non-digit characters
-  let cleaned = phoneNumber.replace(/\D/g, '');
+  const cleaned = phoneNumber.replace(/\D/g, '');
 
   // If number starts with 91 (India), keep it
   if (cleaned.startsWith('91') && cleaned.length === 12) {
@@ -121,15 +121,36 @@ Thank you for your prompt attention.
     return `⚠️ *PAYMENT REMINDER*
 
 Dear ${memberName},
-This is a friendly reminder that your payment for *${currentMonth}* is due on the *11th*.
+This is a friendly reminder that your payment for
+ *${currentMonth}* is due on the *11th*.
 Please ensure timely payment to avoid any late fees.
-
+---------------------------------
 *${daysRemaining} Days remaining*
-
+---------------------------------
 Thank you for your cooperation.
 
 Yours Truly,
-*Syed Rafi, Ponnur.*`;
+*Syed Rafi, Ponnur.*
+
+---------------------------------
+
+⚠️ *చెల్లింపు గుర్తు*
+
+ప్రియమైన ${memberName} గారికి,
+మీ *${currentMonth}* నెలకు సంబంధించిన చెల్లింపు *11వ తేదీ* నాటికి
+చెల్లించవలసిందిగా ఇది ఒక స్నేహపూర్వక గుర్తు.
+అలస్య రుసుములు తప్పించుకోవడానికి దయచేసి సమయానికి చెల్లించండి.
+
+---------------------------------
+*మిగిలిన రోజులు: ${daysRemaining}*
+---------------------------------
+
+మీ సహకారానికి ధన్యవాదాలు.
+
+భక్తితో,
+*సయ్యద్ రఫీ, పొన్నూరు.*
+
+`;
   }
 }
 
@@ -300,7 +321,7 @@ export async function checkBackendHealth(): Promise<{
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    await response.json();
 
     return {
       isAccessible: true,

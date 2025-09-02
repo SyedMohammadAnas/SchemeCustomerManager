@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { NewMember, PaymentStatus } from "@/lib/supabase"
+import { NewMember, PaymentStatus, MonthTable } from "@/lib/supabase"
 import { validatePhoneNumber } from "@/lib/utils"
 import { DatabaseService } from "@/lib/database"
 
@@ -113,7 +113,7 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
 
     setIsLoadingFamilyNumber(true)
     try {
-      const familyMobileNumber = await DatabaseService.getFamilyMobileNumber(currentMonth as any, formData.family)
+      const familyMobileNumber = await DatabaseService.getFamilyMobileNumber(currentMonth as MonthTable, formData.family)
       if (familyMobileNumber) {
         setFormData(prev => ({ ...prev, mobile_number: familyMobileNumber }))
         // Clear any mobile number validation errors
@@ -315,7 +315,7 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
               </p>
               {formData.family && formData.family !== 'Individual' && formData.family !== '__new__' && familySuggestions?.includes(formData.family) && (
                 <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  <strong>Family Exists:</strong> This family already has members. You can use the "Share Family #" button to copy their mobile number, or keep your own.
+                  <strong>Family Exists:</strong> This family already has members. You can use the &ldquo;Share Family #&rdquo; button to copy their mobile number, or keep your own.
                 </p>
               )}
             </div>

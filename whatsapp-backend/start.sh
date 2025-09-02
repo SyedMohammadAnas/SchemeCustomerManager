@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # WhatsApp Backend Startup Script for Railway
-# This script ensures proper Chrome initialization and environment setup
+# This script ensures proper Chrome initialization and environment setup with persistent volumes
 
 echo "🚀 Starting WhatsApp Backend..."
 
@@ -25,9 +25,23 @@ echo "✅ Chrome found at /usr/bin/chromium-browser"
 echo "🔍 Chrome version:"
 /usr/bin/chromium-browser --version || echo "Could not get Chrome version"
 
-# Create necessary directories
-mkdir -p whatsapp-session logs
-chmod 755 whatsapp-session logs
+# Create necessary directories for persistent storage
+echo "📁 Setting up persistent storage directories..."
+mkdir -p /app/tokens /app/logs /app/sessions
+chmod 755 /app/tokens /app/logs /app/sessions
+
+# Create symbolic links if they don't exist
+if [ ! -L "./tokens" ]; then
+    ln -sf /app/tokens ./tokens
+fi
+if [ ! -L "./logs" ]; then
+    ln -sf /app/logs ./logs
+fi
+if [ ! -L "./sessions" ]; then
+    ln -sf /app/sessions ./sessions
+fi
+
+echo "✅ Persistent storage setup complete"
 
 # Start the application
 echo "🎉 Starting Node.js application..."

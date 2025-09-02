@@ -1,10 +1,10 @@
 /**
- * WhatsApp Client Manager
- * Handles WhatsApp Web.js client initialization, QR code generation, and message sending
- * This module prevents circular dependencies by being a standalone client manager
+ * WhatsApp Client Manager using Venom Bot
+ * Handles WhatsApp Web client initialization, QR code generation, and message sending
+ * This module provides better Chrome support and persistent sessions
  */
 
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const venom = require('venom-bot');
 const qrcode = require('qrcode');
 
 // Global variables to store client state
@@ -14,22 +14,22 @@ let isClientReady = false;
 let connectionStatus = 'disconnected';
 
 /**
- * Initialize WhatsApp client with proper event handlers
- * Sets up authentication and QR code generation
+ * Initialize WhatsApp client with Venom Bot
+ * Sets up authentication and QR code generation with persistent sessions
  */
 function initializeWhatsAppClient() {
-  console.log('🚀 Initializing WhatsApp client...');
+  console.log('🚀 Initializing WhatsApp client with Venom Bot...');
 
-  // Create new client instance with local authentication
-  client = new Client({
-    authStrategy: new LocalAuth({
-      dataPath: './whatsapp-session',
-      clientId: 'rafi-scheme-client'
-    }),
-    puppeteer: {
+  // Create new client instance with proper configuration
+  venom
+    .create({
+      session: 'rafi-scheme-session',
+      multidevice: true,
       headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
-      args: [
+      useChrome: true,
+      debug: false,
+      logQR: true,
+      browserArgs: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
@@ -50,15 +50,86 @@ function initializeWhatsAppClient() {
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
         '--memory-pressure-off',
+        '--max_old_space_size=4096',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--no-default-browser-check',
+        '--disable-default-apps',
+        '--disable-popup-blocking',
+        '--disable-translate',
+        '--disable-background-networking',
+        '--disable-sync',
+        '--disable-background-downloads',
+        '--disable-client-side-phishing-detection',
+        '--disable-component-update',
+        '--disable-domain-reliability',
+        '--disable-features=AudioServiceOutOfProcess',
+        '--disable-hang-monitor',
+        '--disable-ipc-flooding-protection',
+        '--disable-renderer-backgrounding',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-images',
+        '--disable-javascript',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--memory-pressure-off',
         '--max_old_space_size=4096'
       ],
-      timeout: 60000,
-      protocolTimeout: 60000
-    }
-  });
+      puppeteerOptions: {
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-images',
+          '--disable-javascript',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--memory-pressure-off',
+          '--max_old_space_size=4096'
+        ],
+        timeout: 60000,
+        protocolTimeout: 60000
+      }
+    })
+    .then((venomClient) => {
+      client = venomClient;
+      console.log('✅ Venom Bot client created successfully');
+      connectionStatus = 'initialized';
+    })
+    .catch((error) => {
+      console.error('❌ Failed to create Venom Bot client:', error);
+      connectionStatus = 'initialization_failed';
+
+      // Retry initialization after 30 seconds
+      setTimeout(() => {
+        console.log('🔄 Retrying WhatsApp client initialization...');
+        initializeWhatsAppClient();
+      }, 30000);
+    });
 
   // Event handler for QR code generation
-  client.on('qr', async (qr) => {
+  client?.on('qr', async (qr) => {
     console.log('🔄 New QR Code received, generating base64...');
     try {
       // Convert QR code to base64 for frontend display
@@ -72,13 +143,13 @@ function initializeWhatsAppClient() {
   });
 
   // Event handler for successful authentication
-  client.on('authenticated', () => {
+  client?.on('authenticated', () => {
     console.log('✅ WhatsApp client authenticated successfully');
     connectionStatus = 'authenticated';
   });
 
   // Event handler for client ready state
-  client.on('ready', () => {
+  client?.on('ready', () => {
     console.log('🎉 WhatsApp client is ready and connected!');
     isClientReady = true;
     connectionStatus = 'ready';
@@ -86,14 +157,14 @@ function initializeWhatsAppClient() {
   });
 
   // Event handler for authentication failure
-  client.on('auth_failure', (message) => {
+  client?.on('auth_failure', (message) => {
     console.error('❌ Authentication failed:', message);
     connectionStatus = 'auth_failed';
     qrCodeData = null;
   });
 
   // Event handler for client disconnection
-  client.on('disconnected', (reason) => {
+  client?.on('disconnected', (reason) => {
     console.log('🔌 WhatsApp client disconnected:', reason);
     isClientReady = false;
     connectionStatus = 'disconnected';
@@ -101,20 +172,8 @@ function initializeWhatsAppClient() {
   });
 
   // Event handler for loading screen
-  client.on('loading_screen', (percent, message) => {
+  client?.on('loading_screen', (percent, message) => {
     console.log(`📱 Loading: ${percent}% - ${message}`);
-  });
-
-  // Initialize the client with error handling
-  client.initialize().catch(error => {
-    console.error('❌ Failed to initialize WhatsApp client:', error);
-    connectionStatus = 'initialization_failed';
-
-    // Retry initialization after 30 seconds
-    setTimeout(() => {
-      console.log('🔄 Retrying WhatsApp client initialization...');
-      initializeWhatsAppClient();
-    }, 30000);
   });
 }
 
@@ -155,16 +214,16 @@ async function sendWhatsAppMessage(number, message) {
   }
 
   try {
-    // Format phone number for WhatsApp (add @c.us suffix)
+    // Format phone number for WhatsApp (add @c.us suffix if needed)
     const chatId = number.includes('@') ? number : `${number}@c.us`;
 
-    // Send the message
-    const sentMessage = await client.sendMessage(chatId, message);
+    // Send the message using Venom Bot
+    const sentMessage = await client.sendText(chatId, message);
 
     console.log(`✅ Message sent successfully to ${number}`);
     return {
       success: true,
-      messageId: sentMessage.id._serialized,
+      messageId: sentMessage.id,
       timestamp: sentMessage.timestamp,
       to: number
     };
@@ -201,7 +260,7 @@ async function restartWhatsAppClient() {
   console.log('🔄 Restarting WhatsApp client...');
 
   if (client) {
-    await client.destroy();
+    await client.close();
   }
 
   // Reset state variables

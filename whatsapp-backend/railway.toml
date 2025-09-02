@@ -2,7 +2,7 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "node src/server.js"
+startCommand = "./start.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -14,3 +14,9 @@ PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
 PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
 CHROME_BIN = "/usr/bin/chromium-browser"
 CHROME_PATH = "/usr/bin/chromium-browser"
+
+# Persistent volume configuration
+[volumes]
+tokens = "/app/tokens"
+logs = "/app/logs"
+sessions = "/app/sessions"

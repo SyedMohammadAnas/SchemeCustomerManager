@@ -1,5 +1,5 @@
 # WhatsApp Backend Dockerfile
-# Multi-stage build for optimized production image
+# Multi-stage build for optimized production image with persistent volumes
 
 # Use official Node.js LTS image as base
 FROM node:18-alpine AS builder
@@ -10,8 +10,11 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Clear any existing node_modules and install dependencies fresh
+RUN rm -rf node_modules package-lock.json && \
+    npm cache clean --force && \
+    npm ci --only=production && \
+    npm cache clean --force
 
 # Production stage
 FROM node:18-alpine AS production
@@ -49,9 +52,15 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     CHROME_PATH=/usr/bin/chromium-browser
 
 # Create directories for sessions and logs with proper permissions
-RUN mkdir -p whatsapp-session logs && \
-    chown -R whatsapp:nodejs whatsapp-session logs && \
-    chmod -R 755 whatsapp-session logs
+# These will be mounted as persistent volumes
+RUN mkdir -p /app/tokens /app/logs /app/sessions && \
+    chown -R whatsapp:nodejs /app/tokens /app/logs /app/sessions && \
+    chmod -R 755 /app/tokens /app/logs /app/sessions
+
+# Create symbolic links for persistent storage
+RUN ln -sf /app/tokens ./tokens && \
+    ln -sf /app/logs ./logs && \
+    ln -sf /app/sessions ./sessions
 
 # Switch to non-root user
 USER whatsapp

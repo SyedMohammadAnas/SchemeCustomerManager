@@ -1,5 +1,5 @@
-# WhatsApp Backend Dockerfile
-# Multi-stage build for optimized production image with persistent volumes
+# WhatsApp Backend Dockerfile - Optimized for Speed
+# Multi-stage build with improved caching and reduced build time
 
 # Use official Node.js LTS image as base
 FROM node:18-alpine AS builder
@@ -10,15 +10,14 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies fresh (handles missing package-lock.json)
-RUN npm cache clean --force && \
-    npm install --only=production --no-package-lock && \
-    npm cache clean --force
+# Install dependencies with better caching strategy
+# Remove unnecessary cache cleaning and use package-lock.json if available
+RUN npm ci --only=production --no-audit --no-fund --prefer-offline
 
 # Production stage
 FROM node:18-alpine AS production
 
-# Install additional packages needed for Puppeteer and Chrome
+# Install only essential packages for Chromium
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -26,9 +25,7 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    curl \
-    dumb-init \
-    && rm -rf /var/cache/apk/*
+    dumb-init
 
 # Create app directory and user
 WORKDIR /app
@@ -44,14 +41,13 @@ COPY --chown=whatsapp:nodejs . .
 # Make startup script executable
 RUN chmod +x start.sh
 
-# Set Puppeteer to use installed Chromium with proper paths
+# Set Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
     CHROME_BIN=/usr/bin/chromium-browser \
     CHROME_PATH=/usr/bin/chromium-browser
 
 # Create directories for sessions and logs with proper permissions
-# These will be mounted as persistent volumes
 RUN mkdir -p /app/tokens /app/logs /app/sessions && \
     chown -R whatsapp:nodejs /app/tokens /app/logs /app/sessions && \
     chmod -R 755 /app/tokens /app/logs /app/sessions
@@ -69,7 +65,7 @@ EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3001/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

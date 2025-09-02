@@ -2,7 +2,18 @@ version: '3.8'
 
 services:
   whatsapp-backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Enable BuildKit for faster builds
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+      # Use cache from previous builds
+      cache_from:
+        - whatsapp-backend:latest
+    image: whatsapp-backend:latest
+    container_name: whatsapp-backend
+    restart: unless-stopped
     ports:
       - "3001:3001"
     environment:
@@ -12,28 +23,27 @@ services:
       - CHROME_BIN=/usr/bin/chromium-browser
       - CHROME_PATH=/usr/bin/chromium-browser
     volumes:
-      # Persistent volumes for WhatsApp sessions and data
-      - whatsapp_tokens:/app/tokens
-      - whatsapp_logs:/app/logs
+      # Persistent storage for sessions and data
       - whatsapp_sessions:/app/sessions
-    restart: unless-stopped
+      - whatsapp_logs:/app/logs
+      - whatsapp_tokens:/app/tokens
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
+    networks:
+      - whatsapp-network
 
 volumes:
-  whatsapp_tokens:
+  whatsapp_sessions:
     driver: local
   whatsapp_logs:
     driver: local
-  whatsapp_sessions:
+  whatsapp_tokens:
     driver: local
+
+networks:
+  whatsapp-network:
+    driver: bridge

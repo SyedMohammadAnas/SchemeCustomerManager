@@ -10,19 +10,24 @@
     "postinstall": "echo 'Skipping Puppeteer download in production'",
     "build": "echo 'Building with venom-bot...'"
   },
-  "keywords": ["whatsapp", "api", "backend", "messaging"],
+  "keywords": [
+    "whatsapp",
+    "api",
+    "backend",
+    "messaging"
+  ],
   "author": "Rafi Scheme",
   "license": "ISC",
   "dependencies": {
-    "venom-bot": "^5.0.21",
-    "express": "^4.18.2",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "qrcode": "^1.5.3",
+    "express": "^4.18.2",
     "morgan": "^1.10.0",
-    "axios": "^1.6.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "qrcode": "^1.5.3",
+    "venom-bot": "^4.2.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

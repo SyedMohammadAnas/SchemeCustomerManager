@@ -25,7 +25,31 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    dumb-init
+    dumb-init \
+    fontconfig \
+    libxcomposite \
+    libxcursor \
+    libxdamage \
+    libxext \
+    libxfixes \
+    libxi \
+    libxrandr \
+    libxrender \
+    libxss \
+    libxtst \
+    pango \
+    atk \
+    atspi \
+    dbus \
+    gtk+3.0 \
+    glib \
+    gdk-pixbuf \
+    cairo \
+    cups \
+    libdrm \
+    mesa \
+    libxkbcommon \
+    libxshmfence
 
 # Create app directory and user
 WORKDIR /app

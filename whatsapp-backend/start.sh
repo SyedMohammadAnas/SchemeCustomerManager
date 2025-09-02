@@ -43,6 +43,17 @@ fi
 
 echo "✅ Persistent storage setup complete"
 
+# Test Chrome before starting the application
+echo "🧪 Testing Chrome before starting application..."
+node test-chrome.js
+if [ $? -ne 0 ]; then
+    echo "❌ Chrome test failed! Cannot start WhatsApp backend."
+    echo "🔍 Please check Chrome installation and dependencies."
+    exit 1
+fi
+
+echo "✅ Chrome test passed! Starting application..."
+
 # Start the application
 echo "🎉 Starting Node.js application..."
 exec node src/server.js

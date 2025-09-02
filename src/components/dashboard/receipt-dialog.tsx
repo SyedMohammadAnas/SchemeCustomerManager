@@ -111,6 +111,9 @@ export function ReceiptDialog({
                 <span class="label">Month:</span> ${formatMonthName(currentMonth)}
               </div>
               <div class="detail">
+                <span class="label">Amount:</span> ₹2000
+              </div>
+              <div class="detail">
                 <span class="label">Payment Status:</span> ${member.payment_status.toUpperCase()}
               </div>
               ${member.paid_to ? `<div class="detail"><span class="label">Paid To:</span> ${member.paid_to}</div>` : ''}
@@ -200,6 +203,15 @@ export function ReceiptDialog({
                 <span className="text-sm font-medium text-gray-700">Month:</span>
               </div>
               <span className="text-sm text-gray-900">{formatMonthName(currentMonth)}</span>
+            </div>
+
+            {/* Amount */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Amount:</span>
+              </div>
+              <span className="text-sm text-gray-900 font-medium">₹2000</span>
             </div>
 
             {/* Payment Status */}

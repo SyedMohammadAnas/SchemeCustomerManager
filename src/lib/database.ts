@@ -56,27 +56,41 @@ export class DatabaseService {
   }
 
   /**
+   * Get the mobile number of the first member in a family
+   * Used for manual mobile number sharing functionality
+   */
+  static async getFamilyMobileNumber(monthTable: MonthTable, familyName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from(monthTable)
+        .select('mobile_number')
+        .eq('family', familyName)
+        .limit(1)
+        .single()
+
+      if (error) {
+        console.error(`Error fetching family mobile number from ${monthTable}:`, error)
+        return null
+      }
+
+      return data?.mobile_number || null
+    } catch (error) {
+      console.error('Database error in getFamilyMobileNumber:', error)
+      return null
+    }
+  }
+
+  /**
    * Add a new member to the specified month table
    * Automatically sorts the member list alphabetically
-   * Shares mobile number with existing family members if family is specified
+   * No longer automatically shares mobile number - users must explicitly choose to share
    */
   static async addMember(monthTable: MonthTable, memberData: NewMember): Promise<Member> {
     try {
-      // If family is specified and not 'Individual', check if family exists and share mobile number
-      let finalMobileNumber = memberData.mobile_number
-      if (memberData.family && memberData.family !== 'Individual') {
-        const existingFamilyMembers = await this.getFamilyMembers(monthTable, memberData.family)
-        if (existingFamilyMembers.length > 0) {
-          // Use the mobile number from the first family member
-          finalMobileNumber = existingFamilyMembers[0].mobile_number
-        }
-      }
-
       const { data, error } = await supabase
         .from(monthTable)
         .insert({
           ...memberData,
-          mobile_number: finalMobileNumber,
           family: memberData.family || 'Individual',
           payment_status: memberData.payment_status || 'pending',
           draw_status: memberData.draw_status || 'not_drawn'
@@ -99,7 +113,7 @@ export class DatabaseService {
     /**
    * Update an existing member's information
    * Maintains alphabetical sorting after update
-   * Handles family changes and mobile number sharing
+   * Allows family members to have individual mobile numbers
    * Prevents changing payment status for previously won customers
    */
   static async updateMember(
@@ -127,20 +141,10 @@ export class DatabaseService {
         throw new Error('Cannot change payment status for members who don\'t need to pay. Their status is automatically managed.')
       }
 
-      // If family is being changed, handle mobile number sharing
-      const finalUpdates = { ...updates }
-      if (updates.family && updates.family !== 'Individual') {
-        const existingFamilyMembers = await this.getFamilyMembers(monthTable, updates.family)
-        if (existingFamilyMembers.length > 0) {
-          // Use the mobile number from the first family member
-          finalUpdates.mobile_number = existingFamilyMembers[0].mobile_number
-        }
-      }
-
       const { data, error } = await supabase
         .from(monthTable)
         .update({
-          ...finalUpdates,
+          ...updates,
           updated_at: new Date().toISOString()
         })
         .eq('id', memberId)

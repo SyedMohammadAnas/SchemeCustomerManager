@@ -90,9 +90,9 @@ async function runTests() {
     {
       name: 'Send Test Message',
       method: 'POST',
-      url: '/api/whatsapp/send',
+      url: '/api/whatsapp/send-message',
       data: {
-        number: TEST_NUMBER,
+        phoneNumber: TEST_NUMBER,
         message: TEST_MESSAGE
       }
     },

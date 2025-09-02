@@ -702,11 +702,7 @@ export function Dashboard() {
                       <Crown className="mr-1 h-3 w-3" />
                       Declare Winner
                     </Button>
-                    {!hasEligibleMembers && (
-                      <div className="text-xs text-muted-foreground text-center">
-                        No eligible members (need paid members or those with no payment required, with tokens)
-                      </div>
-                    )}
+
                   </div>
                 )}
               </div>
@@ -759,11 +755,11 @@ export function Dashboard() {
         {/* Search Bar and Clear Family Filter - Positioned together */}
         <div className="flex flex-row items-center space-x-2 w-full sm:w-auto sm:ml-auto">
           {/* Search Bar */}
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-96">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by name, mobile number, or family..."
+              placeholder="Search by name, mobile number, or family name"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-10 w-full"
@@ -822,6 +818,7 @@ export function Dashboard() {
           onAddMember={handleAddMember}
           isLoading={isLoading}
           familySuggestions={familySuggestions}
+          currentMonth={selectedMonth}
         />
       )}
 

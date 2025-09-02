@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Member, NewMember, PaymentStatus, isWinnerStatus } from "@/lib/supabase"
 import { validatePhoneNumber } from "@/lib/utils"
+import { DatabaseService } from "@/lib/database"
 
 /**
  * Props for the EditMemberDialog component
@@ -32,6 +33,7 @@ interface EditMemberDialogProps {
   member: Member | null
   isLoading?: boolean
   familySuggestions?: string[]
+  currentMonth?: string // Add current month for family number lookup
 }
 
 /**
@@ -40,8 +42,9 @@ interface EditMemberDialogProps {
  * Pre-populates form with current member data
  * Includes validation for required fields and phone numbers
  * Mobile-optimized with responsive design
+ * Now includes manual family number sharing option
  */
-export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, isLoading, familySuggestions }: EditMemberDialogProps) {
+export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, isLoading, familySuggestions, currentMonth }: EditMemberDialogProps) {
   // Form state management - initialized with member data when available
   const [formData, setFormData] = React.useState<NewMember>({
     full_name: '',
@@ -61,6 +64,9 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
 
   // Loading state for form submission
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  // Loading state for family number sharing
+  const [isLoadingFamilyNumber, setIsLoadingFamilyNumber] = React.useState(false)
 
   /**
    * Update form data when member changes or dialog opens
@@ -134,6 +140,43 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
     if (field === 'family' && value !== '__new__') {
       setCustomFamilyName('')
     }
+  }
+
+  /**
+   * Handle sharing family mobile number
+   * Fetches the mobile number from the first family member and applies it
+   */
+  const handleShareFamilyNumber = async () => {
+    if (!currentMonth || !formData.family || formData.family === 'Individual' || formData.family === '__new__') {
+      return
+    }
+
+    setIsLoadingFamilyNumber(true)
+    try {
+      const familyMobileNumber = await DatabaseService.getFamilyMobileNumber(currentMonth as any, formData.family)
+      if (familyMobileNumber) {
+        setFormData(prev => ({ ...prev, mobile_number: familyMobileNumber }))
+        // Clear any mobile number validation errors
+        if (errors.mobile_number) {
+          setErrors(prev => ({ ...prev, mobile_number: '' }))
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching family mobile number:', error)
+    } finally {
+      setIsLoadingFamilyNumber(false)
+    }
+  }
+
+  /**
+   * Check if family number sharing button should be shown
+   */
+  const shouldShowShareFamilyButton = () => {
+    return formData.family &&
+           formData.family !== 'Individual' &&
+           formData.family !== '__new__' &&
+           familySuggestions?.includes(formData.family) &&
+           currentMonth
   }
 
   /**
@@ -244,14 +287,27 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
             <Label htmlFor="mobile_number" className="text-sm sm:text-base">
               Mobile Number *
             </Label>
-            <Input
-              id="mobile_number"
-              value={formData.mobile_number}
-              onChange={(e) => handleInputChange('mobile_number', e.target.value)}
-              placeholder="Enter mobile number"
-              className={`${errors.mobile_number ? "border-destructive" : ""} text-sm sm:text-base`}
-              type="tel"
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="mobile_number"
+                value={formData.mobile_number}
+                onChange={(e) => handleInputChange('mobile_number', e.target.value)}
+                placeholder="Enter mobile number"
+                className={`${errors.mobile_number ? "border-destructive" : ""} text-sm sm:text-base flex-1`}
+                type="tel"
+              />
+              {shouldShowShareFamilyButton() && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleShareFamilyNumber}
+                  disabled={isLoadingFamilyNumber}
+                  className="text-xs sm:text-sm whitespace-nowrap"
+                >
+                  {isLoadingFamilyNumber ? "Loading..." : "Share Family #"}
+                </Button>
+              )}
+            </div>
             {errors.mobile_number && (
               <p className="text-xs sm:text-sm text-destructive">{errors.mobile_number}</p>
             )}
@@ -302,11 +358,11 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
             )}
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">
-                Select existing family or create a new one. Family members share the same mobile number.
+                Select existing family or create a new one. Family members can have their own mobile numbers.
               </p>
-              {formData.family && formData.family !== 'Individual' && formData.family !== '__new__' && (
+              {formData.family && formData.family !== 'Individual' && formData.family !== '__new__' && familySuggestions?.includes(formData.family) && (
                 <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  <strong>Note:</strong> All family members will share the same mobile number for easy communication.
+                  <strong>Family Exists:</strong> This family already has members. You can use the "Share Family #" button to copy their mobile number, or keep your own.
                 </p>
               )}
               {formData.family && formData.family !== 'Individual' && formData.family !== '__new__' && member && (
@@ -327,7 +383,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               <Select
                 value={formData.payment_status}
                 onValueChange={(value) => handleInputChange('payment_status', value as PaymentStatus)}
-                disabled={isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required'}
+                disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
               >
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue />
@@ -336,11 +392,10 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="no_payment_required">No Payment Required</SelectItem>
                 </SelectContent>
               </Select>
               {/* Show note for previously won customers */}
-              {(isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required') && (
+              {isWinnerStatus(member?.draw_status || 'not_drawn') && (
                 <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
                   <strong>Note:</strong> This member has won previously and does not need to worry about payment. Payment fields are disabled.
                 </p>
@@ -355,7 +410,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
               <Select
                 value={formData.paid_to || ''}
                 onValueChange={(value) => handleInputChange('paid_to', value)}
-                disabled={isWinnerStatus(member?.draw_status || 'not_drawn') || member?.payment_status === 'no_payment_required'}
+                disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
               >
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue placeholder="Select recipient" />

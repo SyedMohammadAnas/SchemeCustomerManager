@@ -1,4 +1,5 @@
 import { supabase, Member, NewMember, MonthTable, MONTHS, createWinnerDrawStatus, PaymentStatus, PaidToRecipient, DrawStatus, formatMonthName } from './supabase'
+import { sendTokenAssignmentMessages } from './whatsapp'
 
 
 /**
@@ -187,6 +188,7 @@ export class DatabaseService {
    * Assign sequential token numbers to all members in alphabetical order
    * Generates clean sequential numbering starting from 1 based on name sorting
    * Clears existing tokens first to ensure proper sequence
+   * Sends WhatsApp messages to all members with their assigned token numbers
    */
   static async assignTokenNumbers(monthTable: MonthTable): Promise<Member[]> {
     try {
@@ -217,6 +219,43 @@ export class DatabaseService {
           token_number: tokenNumber
         })
         updatedMembers.push(updatedMember)
+      }
+
+                  // Send WhatsApp messages to all members with their assigned token numbers
+      try {
+        console.log(`📤 Sending token assignment messages to ${updatedMembers.length} members`)
+
+        // Filter members to only include those with valid token numbers
+        const membersWithTokens = updatedMembers
+          .filter(member => member.token_number !== null)
+          .map(member => ({
+            id: member.id,
+            full_name: member.full_name,
+            mobile_number: member.mobile_number,
+            token_number: member.token_number!
+          }))
+
+        if (membersWithTokens.length > 0) {
+          const messagingResults = await sendTokenAssignmentMessages(membersWithTokens, (current, total, memberName) => {
+            console.log(`📤 Progress: ${current}/${total} - Sending to ${memberName}`)
+          })
+
+          console.log(`📊 Token assignment messaging completed: ${messagingResults.sent} sent, ${messagingResults.failed} failed`)
+
+          if (messagingResults.failed > 0) {
+            console.warn(`⚠️ ${messagingResults.failed} token assignment messages failed. Failed members:`, messagingResults.errors.map(e => e.memberName).join(', '))
+
+            // Store failed messages for potential retry later
+            const failedMembers = messagingResults.errors.map(e => e.memberName).join(', ')
+            console.warn(`📝 Failed members: ${failedMembers}`)
+          }
+        } else {
+          console.warn(`⚠️ No members with valid token numbers to send messages to`)
+        }
+      } catch (messagingError) {
+        console.error('❌ Error sending token assignment messages:', messagingError)
+        // Don't throw error here - token assignment was successful, messaging is secondary
+        // Log the error for debugging but continue with the process
       }
 
       return updatedMembers

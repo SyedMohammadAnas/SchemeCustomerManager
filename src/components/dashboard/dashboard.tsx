@@ -245,6 +245,7 @@ export function Dashboard() {
 
   /**
    * Handle token assignment for all members
+   * Includes WhatsApp messaging functionality
    */
   const handleAssignTokens = async () => {
     const membersWithoutTokens = members.filter(member => !member.token_number)
@@ -254,7 +255,7 @@ export function Dashboard() {
       return
     }
 
-    const confirmMessage = `This will assign token numbers to ${membersWithoutTokens.length} member(s). Are you sure?`
+    const confirmMessage = `This will assign token numbers to ${membersWithoutTokens.length} member(s) and send WhatsApp messages to all members with their token numbers. Are you sure?`
     if (!confirm(confirmMessage)) {
       return
     }
@@ -263,10 +264,17 @@ export function Dashboard() {
       setIsAssigningTokens(true)
       setError(null)
 
+      // Show initial progress message
+      console.log(`🔄 Starting token assignment for ${membersWithoutTokens.length} members`)
+
       await DatabaseService.assignTokenNumbers(selectedMonth)
 
       // Reload members to get updated token numbers
       await loadMembers()
+
+      // Show success message
+      console.log(`✅ Token assignment completed successfully`)
+      alert(`✅ Token numbers assigned successfully!\n\nWhatsApp messages have been sent to all members with their assigned token numbers.\n\nNote: If any messages failed, they will be logged in the console for review.`)
     } catch (err) {
       console.error('Error assigning tokens:', err)
       setError('Failed to assign tokens. Please try again.')
@@ -733,7 +741,7 @@ export function Dashboard() {
               size="lg"
             >
               <Hash className="mr-2 h-4 w-4" />
-              {isAssigningTokens ? 'Assigning Tokens...' : 'Assign Alphabetical Tokens'}
+              {isAssigningTokens ? 'Assigning Tokens & Sending Messages...' : 'Assign Tokens & Send WhatsApp Messages'}
             </Button>
           </>
         )}

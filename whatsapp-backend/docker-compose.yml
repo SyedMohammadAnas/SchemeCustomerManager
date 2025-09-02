@@ -15,9 +15,10 @@ services:
     container_name: whatsapp-backend
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "8080:8080"
     environment:
       - NODE_ENV=production
+      - PORT=8080
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
       - CHROME_BIN=/usr/bin/chromium-browser
@@ -28,7 +29,7 @@ services:
       - whatsapp_logs:/app/logs
       - whatsapp_tokens:/app/tokens
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -10,10 +10,9 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Clear any existing node_modules and install dependencies fresh
-RUN rm -rf node_modules package-lock.json && \
-    npm cache clean --force && \
-    npm ci --only=production && \
+# Install dependencies fresh (handles missing package-lock.json)
+RUN npm cache clean --force && \
+    npm install --only=production --no-package-lock && \
     npm cache clean --force
 
 # Production stage

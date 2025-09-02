@@ -37,18 +37,7 @@ interface WhatsAppStatusResponse {
   message: string;
 }
 
-interface WhatsAppHealthResponse {
-  success: boolean;
-  data: {
-    service: string;
-    status: string;
-    connectionStatus: string;
-    isReady: boolean;
-    timestamp: string;
-    uptime: number;
-  };
-  message: string;
-}
+
 
 /**
  * Calculate days remaining until the 11th deadline
@@ -129,7 +118,7 @@ export function formatPhoneNumber(phoneNumber: string): string {
  * @returns Formatted reminder message
  */
 export function generateReminderMessage(memberName: string, isOverdue: boolean = false): string {
-  const { daysRemaining, currentMonth, isOverdue: deadlineOverdue } = calculateDeadlineInfo();
+  const { currentMonth, isOverdue: deadlineOverdue } = calculateDeadlineInfo();
 
   if (isOverdue || deadlineOverdue) {
     return `🔴 *Payment Overdue Alert*
@@ -313,7 +302,7 @@ export async function sendTokenAssignmentMessages(
 export async function sendWhatsAppMessage(
   phoneNumber: string,
   message: string
-): Promise<{ success: boolean; error?: string; message?: string; data?: any }> {
+): Promise<{ success: boolean; error?: string; message?: string; data?: WhatsAppResponse['data'] }> {
   try {
     const formattedNumber = formatPhoneNumber(phoneNumber);
 

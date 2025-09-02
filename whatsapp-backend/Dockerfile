@@ -35,21 +35,8 @@ RUN apk add --no-cache \
     libxi \
     libxrandr \
     libxrender \
-    libxss \
     libxtst \
-    pango \
-    atk \
-    atspi \
-    dbus \
-    gtk+3.0 \
-    glib \
-    gdk-pixbuf \
-    cairo \
-    cups \
-    libdrm \
-    mesa \
-    libxkbcommon \
-    libxshmfence
+    pango
 
 # Create app directory and user
 WORKDIR /app

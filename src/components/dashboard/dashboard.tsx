@@ -17,6 +17,7 @@ import { ReceiptDialog } from "./receipt-dialog"
 import { DatabaseService } from "@/lib/database"
 import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
+import { sendDrawReminders } from "@/lib/whatsapp"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -92,6 +93,7 @@ export function Dashboard() {
   // Loading states for various operations
   const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
   const [isProceedingToNextMonth, setIsProceedingToNextMonth] = React.useState(false)
+  const [isSendingReminders, setIsSendingReminders] = React.useState(false)
 
   // Error state for user feedback
   const [error, setError] = React.useState<string | null>(null)
@@ -353,6 +355,47 @@ export function Dashboard() {
       setError('Failed to proceed to next month. Please try again.')
     } finally {
       setIsProceedingToNextMonth(false)
+    }
+  }
+
+  /**
+   * Handle sending draw reminders to all members
+   */
+  const handleSendReminders = async () => {
+    if (members.length === 0) {
+      alert('No members found to send reminders to.')
+      return
+    }
+
+    const confirmMessage = `This will send draw reminder messages to all ${members.length} members via WhatsApp. Are you sure?`
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    try {
+      setIsSendingReminders(true)
+      setError(null)
+
+      // Show initial progress message
+      console.log(`🔄 Starting draw reminder to ${members.length} members`)
+
+      const results = await sendDrawReminders(members, (current, total, memberName) => {
+        console.log(`📤 Sending reminder ${current}/${total}: ${memberName}`)
+      })
+
+      // Show success message
+      console.log(`✅ Draw reminders completed: ${results.sent} sent, ${results.failed} failed`)
+
+      if (results.failed > 0) {
+        alert(`✅ Draw reminders sent!\n\n${results.sent} messages sent successfully.\n${results.failed} messages failed.\n\nFailed messages:\n${results.errors.map(e => `- ${e.memberName}: ${e.error}`).join('\n')}`)
+      } else {
+        alert(`✅ Draw reminders sent successfully!\n\nAll ${results.sent} messages were delivered.`)
+      }
+    } catch (err) {
+      console.error('Error sending draw reminders:', err)
+      setError('Failed to send draw reminders. Please try again.')
+    } finally {
+      setIsSendingReminders(false)
     }
   }
 
@@ -760,8 +803,20 @@ export function Dashboard() {
           </Button>
         )}
 
-        {/* Search Bar and Clear Family Filter - Positioned together */}
+        {/* Search Bar, Send Reminders Button, and Clear Family Filter - Positioned together */}
         <div className="flex flex-row items-center space-x-2 w-full sm:w-auto sm:ml-auto">
+          {/* Send Reminders Button */}
+          <Button
+            variant="outline"
+            onClick={handleSendReminders}
+            disabled={isSendingReminders || members.length === 0}
+            className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 h-10 text-sm whitespace-nowrap"
+            size="sm"
+          >
+            <AlertCircle className="mr-2 h-4 w-4" />
+            {isSendingReminders ? 'Sending Reminders...' : 'Send Reminders'}
+          </Button>
+
           {/* Search Bar */}
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

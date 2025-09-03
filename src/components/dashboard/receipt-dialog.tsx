@@ -5,9 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
-import { Receipt, User, Phone, Hash, Users, Calendar, CreditCard, Download, Printer } from "lucide-react"
+import { Receipt, User, Phone, Hash, Users, Calendar, CreditCard, MessageSquare, Printer } from "lucide-react"
 import { Member, MonthTable, formatMonthName } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
+import { sendWhatsAppMessage, generateReceiptMessage } from "@/lib/whatsapp"
 
 /**
  * Props for the ReceiptDialog component
@@ -22,7 +23,7 @@ interface ReceiptDialogProps {
 /**
  * Receipt Dialog Component
  * Displays a professional receipt showing customer details and payment information
- * Includes options to download/print the receipt
+ * Includes options to print the receipt and send via WhatsApp
  */
 export function ReceiptDialog({
   open,
@@ -30,6 +31,10 @@ export function ReceiptDialog({
   member,
   currentMonth
 }: ReceiptDialogProps) {
+  // State for WhatsApp sending
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = React.useState(false)
+  const [whatsappStatus, setWhatsappStatus] = React.useState<'idle' | 'success' | 'error'>('idle')
+
   // Don't render if no member is selected
   if (!member) return null
 
@@ -68,70 +73,38 @@ export function ReceiptDialog({
   }
 
   /**
-   * Handle downloading the receipt as PDF
-   * Uses browser's print-to-PDF functionality
+   * Handle sending receipt via WhatsApp
+   * Generates receipt message and sends to member's mobile number
    */
-  const handleDownload = () => {
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Receipt - ${member.full_name}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .receipt { border: 2px solid #000; padding: 20px; max-width: 400px; }
-              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-              .detail { margin: 10px 0; }
-              .label { font-weight: bold; }
-              .footer { text-align: center; margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; }
-              @media print { body { margin: 0; } }
-            </style>
-          </head>
-          <body>
-            <div class="receipt">
-              <div class="header">
-                <h2>RAFI GOLD SAVING SCHEME</h2>
-                <p>Payment Receipt</p>
-              </div>
-              <div class="detail">
-                <span class="label">Token Number:</span> ${member.token_number ? formatTokenDisplay(member.token_number) : 'N/A'}
-              </div>
-              <div class="detail">
-                <span class="label">Member Name:</span> ${member.full_name}
-              </div>
-              <div class="detail">
-                <span class="label">Mobile:</span> ${formatPhoneNumber(member.mobile_number)}
-              </div>
-              <div class="detail">
-                <span class="label">Family:</span> ${member.family}
-              </div>
-              <div class="detail">
-                <span class="label">Month:</span> ${formatMonthName(currentMonth)}
-              </div>
-              <div class="detail">
-                <span class="label">Amount:</span> ₹2000
-              </div>
-              <div class="detail">
-                <span class="label">Payment Status:</span> ${member.payment_status.toUpperCase()}
-              </div>
-              ${member.paid_to ? `<div class="detail"><span class="label">Paid To:</span> ${member.paid_to}</div>` : ''}
-              <div class="detail">
-                <span class="label">Payment Date:</span> ${getPaymentDate()}
-              </div>
-              <div class="footer">
-                <p>Thank you for your payment!</p>
-                <p>Generated on: ${new Date().toLocaleDateString()}</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      printWindow.focus()
-      printWindow.print()
-      printWindow.close()
+  const handleSendWhatsApp = async () => {
+    if (!member) return
+
+    setIsSendingWhatsApp(true)
+    setWhatsappStatus('idle')
+
+    try {
+      // Generate receipt message
+      const message = generateReceiptMessage(member, currentMonth)
+
+      // Send via WhatsApp
+      const result = await sendWhatsAppMessage(member.mobile_number, message)
+
+      if (result.success) {
+        setWhatsappStatus('success')
+        // Reset status after 3 seconds
+        setTimeout(() => setWhatsappStatus('idle'), 3000)
+      } else {
+        setWhatsappStatus('error')
+        // Reset status after 3 seconds
+        setTimeout(() => setWhatsappStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp receipt:', error)
+      setWhatsappStatus('error')
+      // Reset status after 3 seconds
+      setTimeout(() => setWhatsappStatus('idle'), 3000)
+    } finally {
+      setIsSendingWhatsApp(false)
     }
   }
 
@@ -139,20 +112,20 @@ export function ReceiptDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md print:max-w-none print:p-0">
         <DialogHeader className="print:hidden">
-                  <DialogTitle className="flex items-center gap-2">
-          <Receipt className="h-5 w-5" />
-          Payment Receipt - {member.full_name}
-        </DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Payment Receipt - {member.full_name}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Receipt Content */}
         <div className="space-y-4 print:space-y-2 receipt-print-content">
           {/* Receipt Header */}
-          <div className="text-center border-b-2 border-gray-300 pb-4 print:pb-2">
-            <h2 className="text-xl font-bold text-gray-900">RAFI GOLD SAVING SCHEME</h2>
-            <p className="text-sm text-gray-600">Payment Receipt</p>
+          <div className="text-center border-b-2 border-border pb-4 print:pb-2">
+            <h2 className="text-xl font-bold text-foreground">RAFI GOLD SAVING SCHEME</h2>
+            <p className="text-sm text-muted-foreground">Payment Receipt</p>
             {member.payment_status === 'paid' && (
-              <p className="text-xs text-green-600 font-medium mt-1">✓ Payment Confirmed</p>
+              <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">✓ Payment Confirmed</p>
             )}
           </div>
 
@@ -161,8 +134,8 @@ export function ReceiptDialog({
             {/* Token Number */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Hash className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Token Number:</span>
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Token Number:</span>
               </div>
               <Badge variant="outline" className="font-mono">
                 {member.token_number ? formatTokenDisplay(member.token_number) : 'N/A'}
@@ -172,57 +145,57 @@ export function ReceiptDialog({
             {/* Member Name */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Member Name:</span>
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Member Name:</span>
               </div>
-              <span className="text-sm text-gray-900 font-medium">{member.full_name}</span>
+              <span className="text-sm text-foreground font-medium">{member.full_name}</span>
             </div>
 
             {/* Mobile Number */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Mobile:</span>
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Mobile:</span>
               </div>
-              <span className="text-sm text-gray-900">{formatPhoneNumber(member.mobile_number)}</span>
+              <span className="text-sm text-foreground">{formatPhoneNumber(member.mobile_number)}</span>
             </div>
 
             {/* Family */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Family:</span>
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Family:</span>
               </div>
-              <span className="text-sm text-gray-900">{member.family}</span>
+              <span className="text-sm text-foreground">{member.family}</span>
             </div>
 
             {/* Month */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Month:</span>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Month:</span>
               </div>
-              <span className="text-sm text-gray-900">{formatMonthName(currentMonth)}</span>
+              <span className="text-sm text-foreground">{formatMonthName(currentMonth)}</span>
             </div>
 
             {/* Amount */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Amount:</span>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Amount:</span>
               </div>
-              <span className="text-sm text-gray-900 font-medium">₹2000</span>
+              <span className="text-sm text-foreground font-medium">₹2000</span>
             </div>
 
             {/* Payment Status */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Payment Status:</span>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Payment Status:</span>
               </div>
               <Badge
                 variant={member.payment_status === 'paid' ? 'default' : 'secondary'}
-                className={member.payment_status === 'paid' ? 'bg-green-500 hover:bg-green-600' : ''}
+                className={member.payment_status === 'paid' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
               >
                 {member.payment_status.toUpperCase()}
               </Badge>
@@ -231,7 +204,7 @@ export function ReceiptDialog({
             {/* Paid To (if applicable) */}
             {member.paid_to && (
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Paid To:</span>
+                <span className="text-sm font-medium text-foreground">Paid To:</span>
                 <Badge variant="outline" className="text-xs">
                   {member.paid_to}
                 </Badge>
@@ -240,18 +213,18 @@ export function ReceiptDialog({
 
             {/* Payment Date */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Payment Date:</span>
-              <span className="text-sm text-gray-900">{getPaymentDate()}</span>
+              <span className="text-sm font-medium text-foreground">Payment Date:</span>
+              <span className="text-sm text-foreground">{getPaymentDate()}</span>
             </div>
           </div>
 
           {/* Receipt Footer */}
-          <div className="text-center border-t border-gray-300 pt-4 print:pt-2">
-            <p className="text-sm text-gray-600 font-medium">Thank you for your payment!</p>
-            <p className="text-xs text-gray-500 mt-1">
+          <div className="text-center border-t border-border pt-4 print:pt-2">
+            <p className="text-sm text-muted-foreground font-medium">Thank you for your payment!</p>
+            <p className="text-xs text-muted-foreground mt-1">
               Generated on: {new Date().toLocaleDateString()}
             </p>
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-muted-foreground">
               <p>RAFI GOLD SAVING SCHEME</p>
               <p>This receipt serves as proof of payment</p>
             </div>
@@ -269,11 +242,25 @@ export function ReceiptDialog({
             Print Receipt
           </Button>
           <Button
-            onClick={handleDownload}
-            className="flex-1"
+            onClick={handleSendWhatsApp}
+            disabled={isSendingWhatsApp}
+            className={`flex-1 ${
+              whatsappStatus === 'success'
+                ? 'bg-green-500 hover:bg-green-600 text-white'
+                : whatsappStatus === 'error'
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}
           >
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
+            <MessageSquare className="h-4 w-4 mr-2" />
+            {isSendingWhatsApp
+              ? 'Sending...'
+              : whatsappStatus === 'success'
+              ? 'Sent!'
+              : whatsappStatus === 'error'
+              ? 'Failed'
+              : 'WhatsApp'
+            }
           </Button>
         </div>
       </DialogContent>

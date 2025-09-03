@@ -193,6 +193,89 @@ The numbers will not change in between, and in the draw as well, this same token
 }
 
 /**
+ * Generate draw reminder message for all members
+ * @returns Formatted draw reminder message
+ */
+export function generateDrawReminderMessage(): string {
+  return `⚠️SHEME DRAW
+
+Today at 7:00 PM there will be a draw with all the paid customers, please stay tuned and look forward for the results
+
+Hoping the best of luck for you
+
+-----------------------------------
+
+⚠️ స్కీమ్ డ్రా
+
+ఈరోజు సాయంత్రం 7:00 గంటలకు అన్ని పేమెంట్ చేసిన కస్టమర్స్ కోసం డ్రా ఉంటుంది.
+దయచేసి స్టే ట్యూన్ గా ఉండండి మరియు రిజల్ట్స్ కోసం వెయిట్ చేయండి.
+
+మీకు బెస్ట్ ఆఫ్ లక్!
+
+*Rafi Scheme Team*`;
+}
+
+/**
+ * Generate receipt message for WhatsApp
+ * @param member - Member object with all details
+ * @param currentMonth - Current month information
+ * @returns Formatted receipt message for WhatsApp
+ */
+export function generateReceiptMessage(member: any, currentMonth: any): string {
+  const getPaymentDate = () => {
+    if (member.payment_status === 'paid') {
+      const date = new Date(member.updated_at)
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } else {
+      return new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    }
+  }
+
+  const formatTokenDisplay = (tokenNumber: number) => {
+    return `#${tokenNumber.toString().padStart(2, '0')}`
+  }
+
+  const formatMonthName = (month: any) => {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    return `${monthNames[month.month - 1]} ${month.year}`
+  }
+
+  return `📄 *PAYMENT RECEIPT*
+
+*RAFI GOLD SAVING SCHEME*
+
+*Token Number:* ${member.token_number ? formatTokenDisplay(member.token_number) : 'N/A'}
+*Member Name:* ${member.full_name}
+*Mobile:* ${formatPhoneNumber(member.mobile_number)}
+*Family:* ${member.family}
+*Month:* ${formatMonthName(currentMonth)}
+*Amount:* ₹2000
+*Payment Status:* ${member.payment_status.toUpperCase()}
+${member.paid_to ? `*Paid To:* ${member.paid_to}` : ''}
+*Payment Date:* ${getPaymentDate()}
+
+Thank you for your payment!
+
+Generated on: ${new Date().toLocaleDateString()}
+
+*RAFI GOLD SAVING SCHEME*
+This receipt serves as proof of payment.`
+}
+
+/**
  * Send token assignment messages to multiple members with retry mechanism
  * @param members - Array of members with token numbers assigned
  * @param onProgress - Callback function for progress updates
@@ -428,6 +511,98 @@ export async function sendBulkReminders(
   }
 
   console.log(`📊 Bulk reminder completed: ${results.sent} sent, ${results.failed} failed`);
+  return results;
+}
+
+/**
+ * Send draw reminder messages to all members
+ * @param members - Array of all members to send draw reminders to
+ * @param onProgress - Callback function for progress updates
+ * @returns Promise with results summary
+ */
+export async function sendDrawReminders(
+  members: Array<{ id: number; full_name: string; mobile_number: string }>,
+  onProgress?: (current: number, total: number, memberName: string) => void
+): Promise<{
+  success: boolean;
+  sent: number;
+  failed: number;
+  errors: Array<{ memberId: number; memberName: string; error: string }>;
+}> {
+  const results = {
+    success: true,
+    sent: 0,
+    failed: 0,
+    errors: [] as Array<{ memberId: number; memberName: string; error: string }>
+  };
+
+  console.log(`📤 Starting draw reminder to ${members.length} members`);
+
+  // Generate the draw reminder message once
+  const message = generateDrawReminderMessage();
+
+  for (let i = 0; i < members.length; i++) {
+    const member = members[i];
+
+    // Update progress
+    onProgress?.(i + 1, members.length, member.full_name);
+
+    // Send message with retry mechanism
+    let retryCount = 0;
+    const maxRetries = 3;
+    let messageSent = false;
+
+    while (retryCount < maxRetries && !messageSent) {
+      try {
+        const result = await sendWhatsAppMessage(member.mobile_number, message);
+
+        if (result.success === true) {
+          results.sent++;
+          console.log(`✅ Draw reminder sent to ${member.full_name}`);
+          messageSent = true;
+        } else {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            console.warn(`⚠️ Retry ${retryCount}/${maxRetries} for ${member.full_name}: ${result.error}`);
+            // Wait longer between retries
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+          } else {
+            results.failed++;
+            results.errors.push({
+              memberId: member.id,
+              memberName: member.full_name,
+              error: result.error || result.message || 'Unknown error'
+            });
+            console.error(`❌ Failed to send draw reminder to ${member.full_name} after ${maxRetries} retries:`, result.error);
+          }
+        }
+      } catch (error) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.warn(`⚠️ Retry ${retryCount}/${maxRetries} for ${member.full_name} due to error:`, error);
+          await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+        } else {
+          results.failed++;
+          results.errors.push({
+            memberId: member.id,
+            memberName: member.full_name,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          console.error(`❌ Failed to send draw reminder to ${member.full_name} after ${maxRetries} retries:`, error);
+        }
+      }
+    }
+
+    // Add delay between messages to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  console.log(`📊 Draw reminder completed: ${results.sent} sent, ${results.failed} failed`);
+
+  if (results.failed > 0) {
+    console.warn(`⚠️ ${results.failed} draw reminder messages failed. Consider retrying failed messages.`);
+  }
+
   return results;
 }
 

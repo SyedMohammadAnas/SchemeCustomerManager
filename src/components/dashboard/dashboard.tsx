@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown, AlertCircle, ChevronDown, X } from "lucide-react"
+import { Plus, Users, CreditCard, Trophy, Hash, Search, ArrowRight, Crown, AlertCircle, ChevronDown, X, IndianRupee } from "lucide-react"
 import { ThemeSwitch } from "@/components/ui/theme-switch"
 import { MonthSelector } from "./month-selector"
 import { MembersTable } from "./members-table"
@@ -17,7 +17,7 @@ import { ReceiptDialog } from "./receipt-dialog"
 import { DatabaseService } from "@/lib/database"
 import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
-import { sendDrawReminders } from "@/lib/whatsapp"
+import { sendDrawReminders, sendBulkReceipts } from "@/lib/whatsapp"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -94,6 +94,7 @@ export function Dashboard() {
   const [isAssigningTokens, setIsAssigningTokens] = React.useState(false)
   const [isProceedingToNextMonth, setIsProceedingToNextMonth] = React.useState(false)
   const [isSendingReminders, setIsSendingReminders] = React.useState(false)
+  const [isSendingBulkReceipts, setIsSendingBulkReceipts] = React.useState(false)
 
   // Error state for user feedback
   const [error, setError] = React.useState<string | null>(null)
@@ -396,6 +397,50 @@ export function Dashboard() {
       setError('Failed to send draw reminders. Please try again.')
     } finally {
       setIsSendingReminders(false)
+    }
+  }
+
+  /**
+   * Handle sending bulk receipts to paid members
+   */
+  const handleSendBulkReceipts = async () => {
+    // Filter paid members
+    const paidMembers = members.filter(member => member.payment_status === 'paid')
+
+    if (paidMembers.length === 0) {
+      alert('No paid members found to send receipts to.')
+      return
+    }
+
+    const confirmMessage = `This will send payment receipts to ${paidMembers.length} paid members via WhatsApp. Are you sure?`
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    try {
+      setIsSendingBulkReceipts(true)
+      setError(null)
+
+      // Show initial progress message
+      console.log(`🔄 Starting bulk receipt sending to ${paidMembers.length} paid members`)
+
+      const results = await sendBulkReceipts(paidMembers, selectedMonth, (current, total, memberName) => {
+        console.log(`📤 Sending receipt ${current}/${total}: ${memberName}`)
+      })
+
+      // Show success message
+      console.log(`✅ Bulk receipts completed: ${results.sent} sent, ${results.failed} failed`)
+
+      if (results.failed > 0) {
+        alert(`✅ Bulk receipts sent!\n\n${results.sent} receipts sent successfully.\n${results.failed} receipts failed.\n\nFailed receipts:\n${results.errors.map(e => `- ${e.memberName}: ${e.error}`).join('\n')}`)
+      } else {
+        alert(`✅ Bulk receipts sent successfully!\n\nAll ${results.sent} receipts were delivered.`)
+      }
+    } catch (err) {
+      console.error('Error sending bulk receipts:', err)
+      setError('Failed to send bulk receipts. Please try again.')
+    } finally {
+      setIsSendingBulkReceipts(false)
     }
   }
 
@@ -803,7 +848,7 @@ export function Dashboard() {
           </Button>
         )}
 
-        {/* Search Bar, Send Reminders Button, and Clear Family Filter - Positioned together */}
+        {/* Search Bar, Send Reminders Button, Send Receipts Button, and Clear Family Filter - Positioned together */}
         <div className="flex flex-row items-center space-x-2 w-full sm:w-auto sm:ml-auto">
           {/* Send Reminders Button */}
           <Button
@@ -815,6 +860,18 @@ export function Dashboard() {
           >
             <AlertCircle className="mr-2 h-4 w-4" />
             {isSendingReminders ? 'Sending Reminders...' : 'Send Reminders'}
+          </Button>
+
+          {/* Send Bulk Receipts Button */}
+          <Button
+            variant="outline"
+            onClick={handleSendBulkReceipts}
+            disabled={isSendingBulkReceipts || members.filter(m => m.payment_status === 'paid').length === 0}
+            className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 h-10 text-sm whitespace-nowrap"
+            size="sm"
+          >
+            <IndianRupee className="mr-2 h-4 w-4" />
+            {isSendingBulkReceipts ? 'Sending Receipts...' : 'Send Receipts'}
           </Button>
 
           {/* Search Bar */}

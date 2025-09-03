@@ -695,3 +695,104 @@ export async function checkWhatsAppStatus(): Promise<{
     };
   }
 }
+
+/**
+ * Send bulk receipt messages to paid members
+ * @param members - Array of paid members to send receipts to
+ * @param currentMonth - Current month information
+ * @param onProgress - Callback function for progress updates
+ * @returns Promise with results summary
+ */
+export async function sendBulkReceipts(
+  members: Array<{ id: number; full_name: string; mobile_number: string; payment_status: string; token_number?: number | null; paid_to?: string | null; updated_at: string }>,
+  currentMonth: MonthTable,
+  onProgress?: (current: number, total: number, memberName: string) => void
+): Promise<{
+  success: boolean;
+  sent: number;
+  failed: number;
+  errors: Array<{ memberId: number; memberName: string; error: string }>;
+}> {
+  const results = {
+    success: true,
+    sent: 0,
+    failed: 0,
+    errors: [] as Array<{ memberId: number; memberName: string; error: string }>
+  };
+
+  // Filter only paid members
+  const paidMembers = members.filter(member => member.payment_status === 'paid');
+
+  if (paidMembers.length === 0) {
+    console.log('⚠️ No paid members found to send receipts to');
+    return {
+      ...results,
+      success: false,
+      errors: [{ memberId: 0, memberName: 'No paid members', error: 'No paid members found' }]
+    };
+  }
+
+  console.log(`📤 Starting bulk receipt sending to ${paidMembers.length} paid members`);
+
+  for (let i = 0; i < paidMembers.length; i++) {
+    const member = paidMembers[i];
+
+    // Update progress
+    onProgress?.(i + 1, paidMembers.length, member.full_name);
+
+    // Generate receipt message
+    const message = generateReceiptMessage(member as Member, currentMonth);
+
+    // Send message with retry mechanism
+    let retryCount = 0;
+    const maxRetries = 3;
+    let messageSent = false;
+
+    while (retryCount < maxRetries && !messageSent) {
+      try {
+        const result = await sendWhatsAppMessage(member.mobile_number, message);
+
+        if (result.success === true) {
+          results.sent++;
+          console.log(`✅ Receipt sent to ${member.full_name} (Token: ${member.token_number || 'N/A'})`);
+          messageSent = true;
+        } else {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            console.warn(`⚠️ Retry ${retryCount}/${maxRetries} for ${member.full_name}: ${result.error}`);
+            // Wait longer between retries
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+          } else {
+            results.failed++;
+            results.errors.push({
+              memberId: member.id,
+              memberName: member.full_name,
+              error: result.error || result.message || 'Unknown error'
+            });
+            console.error(`❌ Failed to send receipt to ${member.full_name} after ${maxRetries} retries:`, result.error);
+          }
+        }
+      } catch (error) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.warn(`⚠️ Retry ${retryCount}/${maxRetries} for ${member.full_name} due to error:`, error);
+          await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+        } else {
+          results.failed++;
+          results.errors.push({
+            memberId: member.id,
+            memberName: member.full_name,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          console.error(`❌ Failed to send receipt to ${member.full_name} after ${maxRetries} retries:`, error);
+        }
+      }
+    }
+
+    // Add delay between messages to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  console.log(`📊 Bulk receipt sending completed: ${results.sent} sent, ${results.failed} failed`);
+  return results;
+}

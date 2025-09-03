@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
-import { Receipt, User, Phone, Hash, Users, Calendar, CreditCard, MessageSquare, Printer, IndianRupee } from "lucide-react"
+import { User, Phone, Hash, Users, Calendar, CreditCard, MessageSquare, Printer, IndianRupee } from "lucide-react"
 import { Member, MonthTable, formatMonthName } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 import { sendWhatsAppMessage, generateReceiptMessage } from "@/lib/whatsapp"

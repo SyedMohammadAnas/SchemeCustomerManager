@@ -3,6 +3,8 @@
  * Handles communication with the WhatsApp backend for sending reminder messages
  */
 
+import { Member, MonthTable } from './supabase'
+
 // WhatsApp backend API configuration
 const WHATSAPP_API_BASE = process.env.NEXT_PUBLIC_WHATSAPP_API_URL;
 console.log('WHATSAPP_API_BASE', WHATSAPP_API_BASE);
@@ -221,7 +223,7 @@ Hoping the best of luck for you
  * @param currentMonth - Current month information
  * @returns Formatted receipt message for WhatsApp
  */
-export function generateReceiptMessage(member: any, currentMonth: any): string {
+export function generateReceiptMessage(member: Member, currentMonth: MonthTable): string {
   const getPaymentDate = () => {
     if (member.payment_status === 'paid') {
       const date = new Date(member.updated_at)
@@ -245,12 +247,9 @@ export function generateReceiptMessage(member: any, currentMonth: any): string {
     return `#${tokenNumber.toString().padStart(2, '0')}`
   }
 
-  const formatMonthName = (month: any) => {
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ]
-    return `${monthNames[month.month - 1]} ${month.year}`
+  const formatMonthName = (month: MonthTable) => {
+    const [monthName, year] = month.split('_')
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`
   }
 
   return `📄 *PAYMENT RECEIPT*

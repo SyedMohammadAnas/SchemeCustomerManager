@@ -415,10 +415,11 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
                 <SelectTrigger className="text-sm sm:text-base">
                   <SelectValue placeholder="Select recipient" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Rafi">Rafi</SelectItem>
-                  <SelectItem value="Basheer">Basheer</SelectItem>
-                </SelectContent>
+                              <SelectContent>
+                <SelectItem value="Rafi">Rafi</SelectItem>
+                <SelectItem value="Basheer">Basheer</SelectItem>
+                <SelectItem value="Afroz">Afroz</SelectItem>
+              </SelectContent>
               </Select>
               {/* Show note for previously won customers */}
               {isWinnerStatus(member?.draw_status || 'not_drawn') && (

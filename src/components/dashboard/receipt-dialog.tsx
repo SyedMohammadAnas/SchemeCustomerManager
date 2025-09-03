@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 
 import { Badge } from "@/components/ui/badge"
-import { Receipt, User, Phone, Hash, Users, Calendar, CreditCard, MessageSquare, Printer } from "lucide-react"
+import { Receipt, User, Phone, Hash, Users, Calendar, CreditCard, MessageSquare, Printer, IndianRupee } from "lucide-react"
 import { Member, MonthTable, formatMonthName } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 import { sendWhatsAppMessage, generateReceiptMessage } from "@/lib/whatsapp"
@@ -113,7 +113,7 @@ export function ReceiptDialog({
       <DialogContent className="max-w-md print:max-w-none print:p-0">
         <DialogHeader className="print:hidden">
           <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
+            <IndianRupee className="h-5 w-5" />
             Payment Receipt - {member.full_name}
           </DialogTitle>
         </DialogHeader>
@@ -181,7 +181,7 @@ export function ReceiptDialog({
             {/* Amount */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <IndianRupee className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">Amount:</span>
               </div>
               <span className="text-sm text-foreground font-medium">₹2000</span>

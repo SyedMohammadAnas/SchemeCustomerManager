@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History, Receipt } from "lucide-react"
+import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History, IndianRupee } from "lucide-react"
 import { Member, MonthTable, isWinnerOfMonth, getWinnerMonth, isWinnerStatus } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 
@@ -151,7 +151,7 @@ function MobileMemberCard({ member, onEditMember, onDeleteMember, onViewHistory,
               title={member.payment_status === 'paid' ? 'View Receipt' : 'Receipt available after payment'}
               disabled={member.payment_status !== 'paid'}
             >
-              <Receipt className="h-4 w-4" />
+              <IndianRupee className="h-4 w-4" />
               <span className="sr-only">View receipt</span>
             </Button>
             <Button
@@ -411,7 +411,7 @@ export function MembersTable({
                           title={member.payment_status === 'paid' ? 'View Receipt' : 'Receipt available after payment'}
                           disabled={member.payment_status !== 'paid'}
                         >
-                          <Receipt className="h-4 w-4" />
+                          <IndianRupee className="h-4 w-4" />
                           <span className="sr-only">View receipt</span>
                         </Button>
                         <Button

@@ -22,6 +22,8 @@ import {
 import { Member, NewMember, PaymentStatus, isWinnerStatus, MonthTable } from "@/lib/supabase"
 import { validatePhoneNumber } from "@/lib/utils"
 import { DatabaseService } from "@/lib/database"
+import { ReceiptDialog } from "./receipt-dialog"
+import { IndianRupee } from "lucide-react"
 
 /**
  * Props for the EditMemberDialog component
@@ -67,6 +69,9 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
 
   // Loading state for family number sharing
   const [isLoadingFamilyNumber, setIsLoadingFamilyNumber] = React.useState(false)
+
+  // State to control receipt dialog visibility
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false)
 
   /**
    * Update form data when member changes or dialog opens
@@ -255,6 +260,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -373,61 +379,74 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
             </div>
           </div>
 
-          {/* Payment Status and Paid To Fields - Side by Side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Payment Status Field */}
-            <div className="space-y-2">
-              <Label htmlFor="payment_status" className="text-sm sm:text-base">
-                Payment Status
-              </Label>
-              <Select
-                value={formData.payment_status}
-                onValueChange={(value) => handleInputChange('payment_status', value as PaymentStatus)}
-                disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
+          {/* Payment Status, Paid To, and Receipt - Horizontal with Equal Spacing */}
+          <div className="space-y-2">
+            <div className="flex items-end gap-4">
+              {/* Payment Status Field */}
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="payment_status" className="text-sm sm:text-base">
+                  Payment Status
+                </Label>
+                <Select
+                  value={formData.payment_status}
+                  onValueChange={(value) => handleInputChange('payment_status', value as PaymentStatus)}
+                  disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
+                >
+                  <SelectTrigger className="text-sm sm:text-base">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Paid To Field */}
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="paid_to" className="text-sm sm:text-base">
+                  Paid To
+                </Label>
+                <Select
+                  value={formData.paid_to || ''}
+                  onValueChange={(value) => handleInputChange('paid_to', value)}
+                  disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
+                >
+                  <SelectTrigger className="text-sm sm:text-base">
+                    <SelectValue placeholder="Select recipient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Rafi">Rafi</SelectItem>
+                    <SelectItem value="Basheer">Basheer</SelectItem>
+                    <SelectItem value="Afroz">Afroz</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Receipt Button - Enabled only when payment status is "paid" */}
+              <Button
+                type="button"
+                onClick={() => setIsReceiptDialogOpen(true)}
+                disabled={formData.payment_status !== 'paid'}
+                className={`bg-green-600 hover:bg-green-700 text-white transition-all ${
+                  formData.payment_status !== 'paid'
+                    ? 'opacity-50 cursor-not-allowed blur-[0.5px]'
+                    : ''
+                }`}
               >
-                <SelectTrigger className="text-sm sm:text-base">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                </SelectContent>
-              </Select>
-              {/* Show note for previously won customers */}
-              {isWinnerStatus(member?.draw_status || 'not_drawn') && (
-                <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
-                  <strong>Note:</strong> This member has won previously and does not need to worry about payment. Payment fields are disabled.
-                </p>
-              )}
+                {/* Indian Rupee icon with label */}
+                <IndianRupee className="h-4 w-4 mr-1" />
+                <span className="text-sm font-medium">Receipt</span>
+              </Button>
             </div>
 
-            {/* Paid To Field */}
-            <div className="space-y-2">
-              <Label htmlFor="paid_to" className="text-sm sm:text-base">
-                Paid To
-              </Label>
-              <Select
-                value={formData.paid_to || ''}
-                onValueChange={(value) => handleInputChange('paid_to', value)}
-                disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
-              >
-                <SelectTrigger className="text-sm sm:text-base">
-                  <SelectValue placeholder="Select recipient" />
-                </SelectTrigger>
-                              <SelectContent>
-                <SelectItem value="Rafi">Rafi</SelectItem>
-                <SelectItem value="Basheer">Basheer</SelectItem>
-                <SelectItem value="Afroz">Afroz</SelectItem>
-              </SelectContent>
-              </Select>
-              {/* Show note for previously won customers */}
-              {isWinnerStatus(member?.draw_status || 'not_drawn') && (
-                <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
-                  <strong>Note:</strong> Payment recipient is not needed for previously won customers.
-                </p>
-              )}
-            </div>
+            {/* Show note for previously won customers */}
+            {isWinnerStatus(member?.draw_status || 'not_drawn') && (
+              <p className="text-xs text-green-600 bg-green-50 p-2 rounded mt-2">
+                <strong>Note:</strong> This member has won previously and does not need to worry about payment. Payment fields are disabled.
+              </p>
+            )}
           </div>
 
           {/* Additional Information Field */}
@@ -445,6 +464,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
           </div>
 
           <DialogFooter className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+            {/* Cancel Button */}
             <Button
               type="button"
               variant="outline"
@@ -454,6 +474,8 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
             >
               Cancel
             </Button>
+
+            {/* Update Member Button */}
             <Button
               type="submit"
               disabled={isSubmitting || isLoading}
@@ -465,5 +487,16 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Receipt Dialog - Opens when receipt button is clicked */}
+    {currentMonth && (
+      <ReceiptDialog
+        open={isReceiptDialogOpen}
+        onOpenChange={setIsReceiptDialogOpen}
+        member={member}
+        currentMonth={currentMonth as MonthTable}
+      />
+    )}
+    </>
   )
 }

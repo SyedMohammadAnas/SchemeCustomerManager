@@ -213,9 +213,8 @@ export function Dashboard() {
       // Reload members to get updated data
       await loadMembers()
 
-      // Close the edit dialog after successful update
-      setIsEditDialogOpen(false)
-      setEditingMember(null)
+      // Don't close the dialog - keep it open after updating
+      // User can manually close it when done
     } catch (err) {
       console.error('Error updating member:', err)
       setError('Failed to update member. Please try again.')
@@ -848,7 +847,7 @@ export function Dashboard() {
           </Button>
         )}
 
-        {/* Search Bar, Send Reminders Button, Send Receipts Button, and Clear Family Filter - Positioned together */}
+        {/* Send Reminders and Send Receipts Buttons */}
         <div className="flex flex-row items-center space-x-2 w-full sm:w-auto sm:ml-auto">
           {/* Send Reminders Button */}
           <Button
@@ -873,47 +872,37 @@ export function Dashboard() {
             <IndianRupee className="mr-2 h-4 w-4" />
             {isSendingBulkReceipts ? 'Sending Receipts...' : 'Send Receipts'}
           </Button>
+        </div>
+      </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by name, mobile number, or family name"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 w-full"
-            />
-            {/* Clear Search Button - Inside the search field */}
-            {searchQuery.trim() && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSearch}
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
-            {/* Search results count indicator */}
-            {searchQuery.trim() && (
-              <div className="absolute right-8 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
-                {stats.filteredCount} of {stats.totalMembers}
-              </div>
-            )}
-          </div>
-
-          {/* Clear Family Filter Button - Beside search bar */}
-          {selectedFamily && (
+      {/* Search Bar - Positioned below buttons */}
+      <div className="flex flex-row items-center space-x-2 mt-3">
+        {/* Search Bar */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by name, mobile number, or family name"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-10 w-full"
+          />
+          {/* Clear Search Button - Inside the search field */}
+          {searchQuery.trim() && (
             <Button
-              variant="outline"
-              onClick={handleClearFamilyFilter}
-              className="bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700 h-10 text-xs whitespace-nowrap"
+              variant="ghost"
               size="sm"
+              onClick={handleClearSearch}
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
             >
-              <X className="mr-1 h-3 w-3" />
-              Clear Family Filter: {selectedFamily}
+              <X className="h-3 w-3" />
             </Button>
+          )}
+          {/* Search results count indicator */}
+          {searchQuery.trim() && (
+            <div className="absolute right-8 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+              {stats.filteredCount} of {stats.totalMembers}
+            </div>
           )}
         </div>
       </div>
@@ -928,6 +917,8 @@ export function Dashboard() {
         onViewReceipt={handleViewReceipt}
         isLoading={isLoading}
         currentMonth={selectedMonth}
+        selectedFamily={selectedFamily}
+        onClearFamilyFilter={handleClearFamilyFilter}
       />
 
       {/* Add Member Dialog - Only shown for starting month */}
@@ -950,6 +941,7 @@ export function Dashboard() {
         member={editingMember}
         isLoading={isLoading}
         familySuggestions={familySuggestions}
+        currentMonth={selectedMonth}
       />
 
       {/* Declare Winner Dialog */}

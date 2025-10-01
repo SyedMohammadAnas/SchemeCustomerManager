@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History, IndianRupee } from "lucide-react"
+import { Edit2, Trash2, Hash, Phone, User, Trophy, Info, Users, History, IndianRupee, X } from "lucide-react"
 import { Member, MonthTable, isWinnerOfMonth, getWinnerMonth, isWinnerStatus } from "@/lib/supabase"
 import { formatPhoneNumber, formatTokenDisplay } from "@/lib/utils"
 
@@ -27,6 +27,8 @@ interface MembersTableProps {
   onViewReceipt: (member: Member) => void
   isLoading?: boolean
   currentMonth: MonthTable // Add current month for winner highlighting
+  selectedFamily?: string | null // Optional family filter
+  onClearFamilyFilter?: () => void // Optional callback to clear family filter
 }
 
 /**
@@ -249,7 +251,9 @@ export function MembersTable({
   onViewHistory,
   onViewReceipt,
   isLoading = false,
-  currentMonth
+  currentMonth,
+  selectedFamily,
+  onClearFamilyFilter
 }: MembersTableProps) {
   // Loading state
   if (isLoading) {
@@ -259,6 +263,23 @@ export function MembersTable({
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Members
+            {/* Show family filter inline with heading */}
+            {selectedFamily && (
+              <>
+                <span className="text-sm font-normal text-blue-600">- Viewing: {selectedFamily}</span>
+                {onClearFamilyFilter && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onClearFamilyFilter}
+                    className="ml-2 h-7 text-xs"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Clear Filter
+                  </Button>
+                )}
+              </>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -279,6 +300,23 @@ export function MembersTable({
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Members
+            {/* Show family filter inline with heading */}
+            {selectedFamily && (
+              <>
+                <span className="text-sm font-normal text-blue-600">- Viewing: {selectedFamily}</span>
+                {onClearFamilyFilter && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onClearFamilyFilter}
+                    className="ml-2 h-7 text-xs"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Clear Filter
+                  </Button>
+                )}
+              </>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -300,6 +338,23 @@ export function MembersTable({
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
           Members ({members.length})
+          {/* Show family filter inline with heading */}
+          {selectedFamily && (
+            <>
+              <span className="text-sm font-normal text-blue-600">- Viewing: {selectedFamily}</span>
+              {onClearFamilyFilter && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClearFamilyFilter}
+                  className="ml-2 h-7 text-xs"
+                >
+                  <X className="mr-1 h-3 w-3" />
+                  Clear Filter
+                </Button>
+              )}
+            </>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">

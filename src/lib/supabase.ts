@@ -31,7 +31,7 @@ export type DrawStatus = 'not_drawn' | 'drawn' | 'winner' |
   'winner_january_2026' | 'winner_february_2026' | 'winner_march_2026' | 'winner_april_2026' |
   'winner_may_2026' | 'winner_june_2026' | 'winner_july_2026' | 'winner_august_2026' |
   'winner_september_2026' | 'winner_october_2026' | 'winner_november_2026' | 'winner_december_2026'
-export type PaidToRecipient = 'Rafi' | 'Basheer'
+export type PaidToRecipient = 'Rafi'
 
 // Member interface representing the structure of each table record
 export interface Member {

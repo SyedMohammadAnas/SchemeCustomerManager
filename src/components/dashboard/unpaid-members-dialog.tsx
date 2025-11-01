@@ -386,8 +386,6 @@ export function UnpaidMembersDialog({
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Rafi">Rafi</SelectItem>
-                                <SelectItem value="Basheer">Basheer</SelectItem>
-                                <SelectItem value="Afroz">Afroz</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -482,8 +480,6 @@ export function UnpaidMembersDialog({
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Rafi">Rafi</SelectItem>
-                                <SelectItem value="Basheer">Basheer</SelectItem>
-                                <SelectItem value="Afroz">Afroz</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

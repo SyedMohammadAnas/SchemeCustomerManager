@@ -142,10 +142,7 @@ Respected ${memberName},
 
 You are kindly requested to pay the scheme amount of *₹2000* on or before the *10th*.
 On the *11th at 7:00 PM*, the Scheme Draw will be conducted.
-The amount of *₹2000* should be sent to either of the following numbers:
-- *Syed Afroz Begum* – 9849631701
-- *Basheer* – 9059703347
-Those who have the opportunity may also come directly to the shop, pay *₹2000*, and collect the receipt.
+Those who have the opportunity may come directly to the shop, pay *₹2000*, and collect the receipt.
 
 Yours,
 *Syed Rafi, Ponnur.*
@@ -157,9 +154,6 @@ Yours,
 
 స్కీం తాలూకు కట్టవలసిన *₹2000* *10 తారీకు* లోపు చెల్లించవలసినదిగా కోరుచున్నాను.
 *11 వ తారీకు సాయంత్రము 7 గంటలకు* షాపులు డ్రా తీయబడును.
-కట్టవలసిన *₹2000* ఈ రెండు నెంబర్లకి పంపించవలసినదిగా కోరుచున్నాను:
-- *Syed Afroz Begum* – 9849631701
-- *Basheer* – 9059703347
 అవకాశం ఉన్నవాళ్లు షాపు దగ్గరికి వచ్చి *₹2000* కట్టి రసీదు తీసుకోవాల్సిందిగా కోరుచున్నాను.
 
 భక్తితో,

@@ -418,8 +418,6 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Rafi">Rafi</SelectItem>
-                    <SelectItem value="Basheer">Basheer</SelectItem>
-                    <SelectItem value="Afroz">Afroz</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

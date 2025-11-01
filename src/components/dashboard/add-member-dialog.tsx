@@ -357,7 +357,6 @@ export function AddMemberDialog({ open, onOpenChange, onAddMember, isLoading, fa
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Rafi">Rafi</SelectItem>
-                  <SelectItem value="Basheer">Basheer</SelectItem>
                 </SelectContent>
               </Select>
             </div>

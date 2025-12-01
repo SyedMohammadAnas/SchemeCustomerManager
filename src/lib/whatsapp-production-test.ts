@@ -9,9 +9,9 @@ import { checkBackendHealth, checkWhatsAppStatus, sendWhatsAppMessage } from './
  * Test the production WhatsApp backend connection
  * This function can be called from the browser console for testing
  */
-export async function testProductionWhatsAppConnection() {
+export async function testProductionWhatsAppConnection(): Promise<boolean> {
   console.log('🚀 Testing Production WhatsApp Backend Connection')
-  console.log('=' .repeat(50))
+  console.log('='.repeat(50))
 
   try {
     // Test 1: Backend Health Check
@@ -32,7 +32,7 @@ export async function testProductionWhatsAppConnection() {
     // Test 3: Send Test Message (only if WhatsApp is ready)
     if (statusResult.isReady) {
       console.log('\n📋 Test 3: Send Test Message')
-      const testNumber = '917396926840' // Replace with your test number
+      const testNumber = '917396926840'
       const testMessage = `🧪 Test message from Rafi Scheme Dashboard - ${new Date().toISOString()}`
 
       console.log(`📱 Sending test message to: ${testNumber}`)
@@ -51,7 +51,6 @@ export async function testProductionWhatsAppConnection() {
 
     console.log('\n🎉 Production WhatsApp Backend Connection Test Completed!')
     return true
-
   } catch (error) {
     console.error('❌ Error during connection test:', error)
     return false
@@ -61,7 +60,11 @@ export async function testProductionWhatsAppConnection() {
 /**
  * Quick status check for production backend
  */
-export async function quickProductionStatusCheck() {
+export async function quickProductionStatusCheck(): Promise<{
+  backendOnline: boolean
+  whatsappReady: boolean
+  status: string
+}> {
   console.log('🔍 Quick Production Status Check')
 
   try {
@@ -70,17 +73,12 @@ export async function quickProductionStatusCheck() {
       checkWhatsAppStatus()
     ])
 
-    console.log('Backend:', health.isAccessible ? '✅ Online' : '❌ Offline')
-    console.log('WhatsApp:', status.isReady ? '✅ Ready' : '⚠️ Not Ready')
-    console.log('Status:', status.status)
-
     return {
       backendOnline: health.isAccessible,
       whatsappReady: status.isReady,
       status: status.status
     }
-  } catch (error) {
-    console.error('❌ Status check failed:', error)
+  } catch (_err) {
     return {
       backendOnline: false,
       whatsappReady: false,
@@ -89,9 +87,22 @@ export async function quickProductionStatusCheck() {
   }
 }
 
-// Export for browser console access
+// SAFELY attach functions to window without using ANY
+declare global {
+  interface Window {
+    testProductionWhatsApp?: {
+      testProductionWhatsAppConnection: () => Promise<boolean>
+      quickProductionStatusCheck: () => Promise<{
+        backendOnline: boolean
+        whatsappReady: boolean
+        status: string
+      }>
+    }
+  }
+}
+
 if (typeof window !== 'undefined') {
-  (window as any).testProductionWhatsApp = {
+  window.testProductionWhatsApp = {
     testProductionWhatsAppConnection,
     quickProductionStatusCheck
   }

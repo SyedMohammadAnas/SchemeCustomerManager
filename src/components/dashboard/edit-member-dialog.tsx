@@ -237,7 +237,7 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
         mobile_number: formData.mobile_number.trim(),
         family: formData.family === '__new__' ? customFamilyName.trim() : (formData.family || 'Individual'),
         payment_status: formData.payment_status,
-        paid_to: formData.paid_to || null,
+        paid_to: "Rafi",
         draw_status: formData.draw_status,
         additional_information: formData.additional_information?.trim() || null
       }
@@ -403,24 +403,19 @@ export function EditMemberDialog({ open, onOpenChange, onUpdateMember, member, i
                 </Select>
               </div>
 
-              {/* Paid To Field */}
+              {/* Paid To Field (fixed to Rafi) */}
               <div className="space-y-2 flex-1">
                 <Label htmlFor="paid_to" className="text-sm sm:text-base">
                   Paid To
                 </Label>
-                <Select
-                  value={formData.paid_to || ''}
-                  onValueChange={(value) => handleInputChange('paid_to', value)}
-                  disabled={isWinnerStatus(member?.draw_status || 'not_drawn')}
-                >
-                  <SelectTrigger className="text-sm sm:text-base">
-                    <SelectValue placeholder="Select recipient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Rafi">Rafi</SelectItem>
-                  </SelectContent>
-                </Select>
+
+                <Input
+                   value="Rafi"
+                   disabled
+                   className="text-sm sm:text-base pointer-events-none bg-white dark:bg-gray-900 text-foreground opacity-100"
+                  />
               </div>
+
 
               {/* Receipt Button - Enabled only when payment status is "paid" */}
               <Button

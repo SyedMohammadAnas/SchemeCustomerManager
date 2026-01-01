@@ -30,7 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 export function Dashboard() {
   // Current selected month state
   // Default to November as the primary month
-  const [selectedMonth, setSelectedMonth] = React.useState<MonthTable>('december_2025')
+  const [selectedMonth, setSelectedMonth] = React.useState<MonthTable>('january_2026')
 
   // Members data and loading state
   const [members, setMembers] = React.useState<Member[]>([])

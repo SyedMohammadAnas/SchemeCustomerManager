@@ -17,7 +17,7 @@ import { ReceiptDialog } from "./receipt-dialog"
 import { DatabaseService } from "@/lib/database"
 import { Member, NewMember, MonthTable, PaymentStatus, PaidToRecipient, formatMonthName, isWinnerOfMonth } from "@/lib/supabase"
 import { formatTokenDisplay } from "@/lib/utils"
-import { sendDrawReminders, sendBulkReceipts } from "@/lib/whatsapp"
+import { sendDrawReminders, sendBulkReceipts, checkWhatsAppStatus } from "@/lib/whatsapp"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -95,9 +95,17 @@ export function Dashboard() {
   const [isProceedingToNextMonth, setIsProceedingToNextMonth] = React.useState(false)
   const [isSendingReminders, setIsSendingReminders] = React.useState(false)
   const [isSendingBulkReceipts, setIsSendingBulkReceipts] = React.useState(false)
+  const [isCheckingWhatsApp, setIsCheckingWhatsApp] = React.useState(false)
 
   // Error state for user feedback
   const [error, setError] = React.useState<string | null>(null)
+
+  // WhatsApp status state
+  const [whatsappStatus, setWhatsappStatus] = React.useState<{
+    isReady: boolean;
+    status: string;
+    error?: string;
+  } | null>(null)
 
   /**
    * Load members and winner for the selected month
@@ -400,6 +408,36 @@ export function Dashboard() {
   }
 
   /**
+   * Handle WhatsApp connectivity health check
+   */
+  const handleCheckWhatsAppHealth = async () => {
+    try {
+      setIsCheckingWhatsApp(true)
+      setError(null)
+
+      console.log('🔍 Checking WhatsApp connectivity...')
+
+      const status = await checkWhatsAppStatus()
+      setWhatsappStatus(status)
+
+      if (status.isReady) {
+        console.log('✅ WhatsApp is ready:', status.status)
+      } else {
+        console.log('❌ WhatsApp not ready:', status.status, status.error)
+      }
+    } catch (err) {
+      console.error('Error checking WhatsApp health:', err)
+      setWhatsappStatus({
+        isReady: false,
+        status: 'error',
+        error: err instanceof Error ? err.message : 'Unknown error'
+      })
+    } finally {
+      setIsCheckingWhatsApp(false)
+    }
+  }
+
+  /**
    * Handle sending bulk receipts to paid members
    */
   const handleSendBulkReceipts = async () => {
@@ -614,19 +652,65 @@ export function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">
             రఫీ బంగారు పొదుపు పథకం
           </h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            Manage members and tokens for {formatMonthName(selectedMonth)}
-            {currentWinner && (
-              <span className="ml-2 inline-flex items-center gap-1">
-                &bull; <Crown className="h-4 w-4 text-yellow-500" /> Winner: {currentWinner.full_name}
-              </span>
-            )}
-            {!currentWinner && hasCurrentMonthWinner && (
-              <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
-                &bull; Winner already declared for this month
-              </span>
-            )}
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+            <p className="text-sm text-muted-foreground sm:text-base">
+              Manage members and tokens for {formatMonthName(selectedMonth)}
+              {currentWinner && (
+                <span className="ml-2 inline-flex items-center gap-1">
+                  &bull; <Crown className="h-4 w-4 text-yellow-500" /> Winner: {currentWinner.full_name}
+                </span>
+              )}
+              {!currentWinner && hasCurrentMonthWinner && (
+                <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
+                  &bull; Winner already declared for this month
+                </span>
+              )}
+            </p>
+
+            {/* WhatsApp Health Check Button */}
+            <div className="flex flex-col space-y-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckWhatsAppHealth}
+                disabled={isCheckingWhatsApp}
+                className="w-fit h-8 text-xs bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+              >
+                {isCheckingWhatsApp ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-700 mr-2"></div>
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <div className={`w-2 h-2 rounded-full mr-2 ${
+                      whatsappStatus?.isReady ? 'bg-green-500' : whatsappStatus ? 'bg-red-500' : 'bg-gray-400'
+                    }`}></div>
+                    WhatsApp Health
+                  </>
+                )}
+              </Button>
+
+              {/* WhatsApp Status Display */}
+              {whatsappStatus && (
+                <div className="text-xs">
+                  <span className={`font-medium ${
+                    whatsappStatus.isReady ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {whatsappStatus.isReady ? '✅ Ready' : '❌ Not Ready'}
+                  </span>
+                  <span className="text-muted-foreground ml-1">
+                    ({whatsappStatus.status})
+                  </span>
+                  {whatsappStatus.error && (
+                    <div className="text-red-500 text-xs mt-1 max-w-xs truncate">
+                      {whatsappStatus.error}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right side controls - Month selector and theme toggle */}

@@ -668,48 +668,27 @@ export function Dashboard() {
             </p>
 
             {/* WhatsApp Health Check Button */}
-            <div className="flex flex-col space-y-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCheckWhatsAppHealth}
-                disabled={isCheckingWhatsApp}
-                className="w-fit h-8 text-xs bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
-              >
-                {isCheckingWhatsApp ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-700 mr-2"></div>
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                      whatsappStatus?.isReady ? 'bg-green-500' : whatsappStatus ? 'bg-red-500' : 'bg-gray-400'
-                    }`}></div>
-                    WhatsApp Health
-                  </>
-                )}
-              </Button>
-
-              {/* WhatsApp Status Display */}
-              {whatsappStatus && (
-                <div className="text-xs">
-                  <span className={`font-medium ${
-                    whatsappStatus.isReady ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {whatsappStatus.isReady ? '✅ Ready' : '❌ Not Ready'}
-                  </span>
-                  <span className="text-muted-foreground ml-1">
-                    ({whatsappStatus.status})
-                  </span>
-                  {whatsappStatus.error && (
-                    <div className="text-red-500 text-xs mt-1 max-w-xs truncate">
-                      {whatsappStatus.error}
-                    </div>
-                  )}
-                </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCheckWhatsAppHealth}
+              disabled={isCheckingWhatsApp}
+              className="w-fit h-8 text-xs bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+            >
+              {isCheckingWhatsApp ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-700 mr-2"></div>
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <div className={`w-2 h-2 rounded-full mr-2 ${
+                    whatsappStatus?.isReady ? 'bg-green-500' : whatsappStatus ? 'bg-red-500' : 'bg-gray-400'
+                  }`}></div>
+                  WhatsApp Health
+                </>
               )}
-            </div>
+            </Button>
           </div>
         </div>
 
